@@ -3,12 +3,13 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "scripts": {
+"scripts": {
     "phase0": "node scripts/phase0/run-phase0.js",
     "phase1": "node scripts/phase1/run-phase1.js",
     "phase2": "node scripts/phase2/run-phase2.js",
     "phase3": "node scripts/phase3/run-phase3.js",
     "build": "npm run phase1 && npm run phase2 && npm run phase3",
+    "update:all": "npm run phase0 && npm run build",
     "preview": "node scripts/utils/serve-dist.js"
   },
   "dependencies": {
