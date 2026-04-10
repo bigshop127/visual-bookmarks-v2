@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": ["id", "title", "url", "folderPath"],
+  "properties": {
+    "id": { "type": "string" },
+    "title": { "type": "string" },
+    "url": { "type": "string" },
+    "folderPath": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "dateAdded": { "type": ["string", "null"] }
+  }
+}

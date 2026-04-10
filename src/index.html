@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Visual Bookmarks</title>
+    <link rel="stylesheet" href="./main.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <div class="toolbar">
+        <input id="searchInput" type="search" placeholder="搜尋網站、網域、資料夾..." />
+        <label>
+          預覽速度
+          <input id="previewSpeed" type="range" min="8" max="40" step="1" />
+        </label>
+      </div>
+      <main>
+        <section id="grid" class="grid"></section>
+      </main>
+    </div>
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>

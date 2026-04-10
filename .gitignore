@@ -1,0 +1,9 @@
+node_modules/
+dist/
+.env
+.cache/
+output/
+cache/
+playwright-report/
+input/bookmarks/*
+!input/bookmarks/.gitkeep

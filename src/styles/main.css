@@ -1,0 +1,110 @@
+:root {
+  --bg: #0b0b0f;
+  --card: #16161d;
+  --text: #f5f5f7;
+  --muted: #a9a9b2;
+  --radius: 18px;
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font-family: Inter, system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+}
+
+.app-shell { padding: 20px; }
+
+.toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: rgba(11,11,15,0.9);
+  backdrop-filter: blur(10px);
+  padding: 12px 0;
+  display: flex;
+  gap: 20px;
+  align-items: center;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 18px;
+}
+
+.card {
+  position: relative;
+  overflow: hidden;
+  background: var(--card);
+  border-radius: var(--radius);
+  min-height: 320px;
+  text-decoration: none;
+  color: var(--text);
+  display: block;
+  transition: transform 220ms ease, box-shadow 220ms ease;
+  /* GPU 加速優化 */
+  will-change: transform, box-shadow;
+  transform: translate3d(0, 0, 0);
+}
+
+.card:hover {
+  transform: translate3d(0, -4px, 0) scale(1.01);
+  box-shadow: 0 20px 40px rgba(0,0,0,0.35);
+}
+
+.card-cover-wrap {
+  position: relative;
+  height: 240px;
+  overflow: hidden;
+}
+
+.card-cover {
+  width: 100%;
+  min-height: 240px;
+  object-fit: cover;
+  transition: transform var(--preview-duration, 12s) linear;
+  will-change: transform;
+}
+
+.card:hover .card-cover.long {
+  transform: translateY(var(--preview-shift, -20%));
+}
+
+.card-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, rgba(0,0,0,.72), rgba(0,0,0,.05));
+  pointer-events: none;
+}
+
+.card-body { padding: 12px 14px 16px; }
+
+.badges {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.badge {
+  font-size: 11px;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: rgba(255,255,255,.08);
+  color: var(--muted);
+}
+
+.title {
+  font-size: 16px;
+  line-height: 1.3;
+  margin: 0 0 8px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.meta {
+  color: var(--muted);
+  font-size: 13px;
+}

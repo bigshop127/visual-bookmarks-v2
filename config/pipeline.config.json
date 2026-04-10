@@ -1,0 +1,5 @@
+{
+  "shardSize": 100,
+  "retryLimit": 2,
+  "screenshotConcurrency": 3
+}

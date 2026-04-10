@@ -1,0 +1,27 @@
+{
+  "name": "visual-bookmarks-v2",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "phase0": "node scripts/phase0/run-phase0.js",
+    "phase1": "node scripts/phase1/run-phase1.js",
+    "phase2": "node scripts/phase2/run-phase2.js",
+    "phase3": "node scripts/phase3/run-phase3.js",
+    "build": "npm run phase1 && npm run phase2 && npm run phase3",
+    "preview": "node scripts/utils/serve-dist.js"
+  },
+  "dependencies": {
+    "ajv": "^8.17.1",
+    "ajv-formats": "^3.0.1",
+    "axios": "^1.15.0",
+    "cheerio": "^1.2.0",
+    "dotenv": "^16.4.7",
+    "fs-extra": "^11.2.0",
+    "fuse.js": "^7.3.0",
+    "normalize-url": "^9.0.0",
+    "p-limit": "^7.3.0",
+    "playwright": "^1.59.1",
+    "serve": "^14.2.6"
+  }
+}
