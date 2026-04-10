@@ -7,3 +7,4 @@ cache/
 playwright-report/
 input/bookmarks/*
 !input/bookmarks/.gitkeep
+!input/bookmarks/MYchrome_bookmarks.json
