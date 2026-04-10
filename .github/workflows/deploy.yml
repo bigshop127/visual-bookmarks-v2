@@ -39,7 +39,7 @@ jobs:
           mkdir -p state
           cat << 'EOF' > state/manifest.json
           {
-            "version": 1,
+            "version": "1.0.0",
             "items": {}
           }
           EOF
