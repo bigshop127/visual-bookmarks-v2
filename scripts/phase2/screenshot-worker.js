@@ -37,7 +37,7 @@ export async function captureScreenshot(item, config) {
   // 實體存放路徑 (用於存檔)
   const localOutputPath = path.resolve(`dist/assets/screenshots/${item.id}.jpg`);
   // 前端讀取路徑 (永遠保持 POSIX 格式)
-  const webPath = `/assets/screenshots/${item.id}.jpg`;
+  const webPath = `./assets/screenshots/${item.id}.jpg`;
   
   await ensureDir(localOutputPath);
 

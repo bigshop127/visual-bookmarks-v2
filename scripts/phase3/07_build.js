@@ -42,7 +42,7 @@ export async function run() {
       tags: [],
       folderPath: item.folderPath,
       // 將絕對路徑轉換為網頁相對路徑，避開部署破圖問題
-      coverImage: shot.coverImage || meta.ogImage || './assets/placeholders/default-cover.svg',
+      coverImage: shot.coverImage || meta.ogImage || 'https://placehold.co/600x400/1a1a24/555566?text=Visual+Bookmarks',
       sourceType: shot.sourceType || (meta.ogImage ? 'og' : 'fallback'),
       siteName: meta.siteName || domain,
       status: state.items[item.id]?.status || 'unknown',
