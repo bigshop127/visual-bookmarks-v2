@@ -1,18 +1,29 @@
 import Fuse from './assets/fuse.mjs';
 
 const state = {
-  items: [],
-  filtered: [],
-  previewSpeed: Number(localStorage.getItem('previewSpeed') || 22)
+  items: [], filtered: [],
+  previewSpeed: Number(localStorage.getItem('previewSpeed') || 22),
+  recent: JSON.parse(localStorage.getItem('recentViews') || '[]'),
+  favorites: JSON.parse(localStorage.getItem('favorites') || '[]'),
+};
+
+window.trackView = (id) => {
+  state.recent = [id, ...state.recent.filter(x => x !== id)].slice(0, 20);
+  localStorage.setItem('recentViews', JSON.stringify(state.recent));
+};
+
+window.toggleFav = (e, id) => {
+  e.preventDefault();
+  if (state.favorites.includes(id)) state.favorites = state.favorites.filter(x => x !== id);
+  else state.favorites.push(id);
+  localStorage.setItem('favorites', JSON.stringify(state.favorites));
+  e.target.classList.toggle('active');
 };
 
 async function loadAllItems() {
-  const manifestRes = await fetch('./data/build-manifest.json');
-  const manifest = await manifestRes.json();
-  const shardCount = manifest.shardCount || 0;
-
+  const manifest = await (await fetch('./data/build-manifest.json')).json();
   const results = [];
-  for (let i = 1; i <= shardCount; i++) {
+  for (let i = 1; i <= manifest.shardCount; i++) {
     const res = await fetch(`./data/shards/items-${i}.json`);
     if (res.ok) results.push(...await res.json());
   }
@@ -20,20 +31,16 @@ async function loadAllItems() {
 }
 
 function createCard(item) {
+  const isFav = state.favorites.includes(item.id) ? 'active' : '';
   const coverClass = item.coverImage.includes('/screenshots/') ? 'card-cover long' : 'card-cover';
-  const badgeHtml = [item.sourceType, item.manualOverride ? 'Manual' : '', item.quarantine ? 'Quarantine' : '']
-    .filter(Boolean)
-    .map((value) => `<span class="badge">${value}</span>`)
-    .join('');
-
   return `
-    <a class="card" href="${item.finalUrl}" target="_blank" rel="noreferrer" style="--preview-duration:${state.previewSpeed}s; --preview-shift:-22%;">
+    <a class="card" href="${item.finalUrl}" target="_blank" onclick="trackView('${item.id}')" style="--preview-duration:${state.previewSpeed}s; --preview-shift:-22%;">
+      <button class="btn-fav ${isFav}" onclick="toggleFav(event, '${item.id}')">❤</button>
       <div class="card-cover-wrap">
-        <img class="${coverClass}" src="${item.coverImage}" alt="${item.title}" loading="lazy" />
+        <img class="${coverClass}" src="${item.coverImage}" loading="lazy" />
         <div class="card-overlay"></div>
       </div>
       <div class="card-body">
-        <div class="badges">${badgeHtml}</div>
         <h3 class="title">${item.title}</h3>
         <div class="meta">${item.domain}</div>
       </div>
@@ -43,60 +50,59 @@ function createCard(item) {
 
 function render(items) {
   const root = document.querySelector('#grid');
-  // 首屏極速渲染：先丟 20 張出來
   root.innerHTML = items.slice(0, 20).map(createCard).join('');
-  
-  // 剩餘的卡片非同步塞入，不卡死主執行緒
-  if (items.length > 20) {
-    setTimeout(() => {
-      root.insertAdjacentHTML('beforeend', items.slice(20).map(createCard).join(''));
-    }, 50);
-  }
+  if (items.length > 20) setTimeout(() => root.insertAdjacentHTML('beforeend', items.slice(20).map(createCard).join('')), 50);
+}
+
+function initSidebar(items) {
+  // 左側資料夾
+  const folders = [...new Set(items.map(i => i.folderPath[0]).filter(Boolean))];
+  const folderHtml = `<li class="active" data-folder="all">全部</li>` + 
+    folders.map(f => `<li data-folder="${f}">${f}</li>`).join('');
+  document.querySelector('#folderList').innerHTML = folderHtml;
+
+  document.querySelector('#folderList').addEventListener('click', e => {
+    if(e.target.tagName !== 'LI') return;
+    document.querySelectorAll('#folderList li, #actionList li').forEach(el => el.classList.remove('active'));
+    e.target.classList.add('active');
+    const folder = e.target.dataset.folder;
+    state.filtered = folder === 'all' ? items : items.filter(i => i.folderPath[0] === folder);
+    render(state.filtered);
+  });
+
+  // 右側功能
+  document.querySelector('#actionList').addEventListener('click', e => {
+    if(e.target.tagName !== 'LI') return;
+    document.querySelectorAll('#folderList li, #actionList li').forEach(el => el.classList.remove('active'));
+    e.target.classList.add('active');
+    
+    const action = e.target.dataset.action;
+    if (action === 'recent') {
+      const recentItems = state.recent.map(id => items.find(i => i.id === id)).filter(Boolean);
+      render(recentItems);
+    } else if (action === 'favorite') {
+      const favItems = state.favorites.map(id => items.find(i => i.id === id)).filter(Boolean);
+      render(favItems);
+    } else if (action === 'random') {
+      const randomItems = [...items].sort(() => 0.5 - Math.random()).slice(0, 5);
+      render(randomItems);
+    }
+  });
 }
 
 function wireSearch(items) {
-  const fuse = new Fuse(items, {
-    keys: [
-      { name: 'title', weight: 0.5 },
-      { name: 'description', weight: 0.2 },
-      { name: 'domain', weight: 0.2 },
-      { name: 'folderPath', weight: 0.1 }
-    ],
-    threshold: 0.35
-  });
-
-  const input = document.querySelector('#searchInput');
-  input.addEventListener('input', (event) => {
-    const value = event.target.value.trim();
-    if (!value) {
-      state.filtered = items;
-      render(items);
-      return;
-    }
-    state.filtered = fuse.search(value).map((r) => r.item);
-    render(state.filtered);
-  });
-}
-
-function wireControls() {
-  const speedInput = document.querySelector('#previewSpeed');
-  speedInput.value = state.previewSpeed;
-  speedInput.addEventListener('input', (event) => {
-    state.previewSpeed = Number(event.target.value);
-    localStorage.setItem('previewSpeed', String(state.previewSpeed));
-    // 直接更新 DOM 的預覽秒數
-    document.querySelectorAll('.card').forEach(card => {
-      card.style.setProperty('--preview-duration', `${state.previewSpeed}s`);
-    });
+  const fuse = new Fuse(items, { keys: ['title', 'domain'], threshold: 0.35 });
+  document.querySelector('#searchInput').addEventListener('input', e => {
+    const val = e.target.value.trim();
+    render(val ? fuse.search(val).map(r => r.item) : items);
   });
 }
 
 async function main() {
   state.items = await loadAllItems();
   state.filtered = state.items;
+  initSidebar(state.items);
   render(state.items);
   wireSearch(state.items);
-  wireControls();
 }
-
 main();

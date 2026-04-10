@@ -9,15 +9,30 @@
   <body>
     <div class="app-shell">
       <div class="toolbar">
-        <input id="searchInput" type="search" placeholder="搜尋網站、網域、資料夾..." />
-        <label>
-          預覽速度
-          <input id="previewSpeed" type="range" min="8" max="40" step="1" />
-        </label>
+        <input id="searchInput" type="search" placeholder="搜尋網站、網域..." />
+        <label>預覽速度 <input id="previewSpeed" type="range" min="8" max="40" step="1" /></label>
       </div>
-      <main>
-        <section id="grid" class="grid"></section>
-      </main>
+      <div class="layout-main">
+        <aside class="sidebar">
+          <div class="sidebar-title">資料夾</div>
+          <ul id="folderList" class="menu-list">
+            <li class="active" data-folder="all">全部</li>
+            </ul>
+        </aside>
+        
+        <main>
+          <section id="grid" class="grid"></section>
+        </main>
+        
+        <aside class="sidebar">
+          <div class="sidebar-title">官方社群功能</div>
+          <ul class="menu-list" id="actionList">
+            <li data-action="recent">最近觀看</li>
+            <li data-action="favorite">我的最愛</li>
+            <li data-action="random">隨機挑選 (5張)</li>
+          </ul>
+        </aside>
+      </div>
     </div>
     <script type="module" src="./app.js"></script>
   </body>
