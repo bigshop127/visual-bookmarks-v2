@@ -27,13 +27,8 @@ async function main() {
     const countDiff = await runDiff();
     console.log(`OK (${countDiff} needs update)`);
 
-    if (countDiff > 0) {
-      console.log(`[5/5] Fetching Metadata for ${countDiff} items (This may take a moment)...`);
-      await runMetadata();
-      console.log(`      Metadata fetch complete.`);
-    } else {
-      console.log('[5/5] Skipping Metadata (No changes detected).');
-    }
+    console.log(`[5/5] Compiling Metadata results...`);
+    await runMetadata();
 
     console.log('✅ Phase 1 Completed Successfully.');
   } catch (error) {
