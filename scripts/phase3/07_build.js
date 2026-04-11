@@ -38,7 +38,7 @@ export async function run() {
     if (shot.ok && shot.coverImage) {
       const absPath = path.resolve(shot.coverImage.replace(/^\.\//, ''));
       const distPath = path.resolve('dist', shot.coverImage.replace(/^\.\//, ''));
-      if (await fs.pathExists(absPath) || await fs.pathExists(distPath)) {
+      if (fs.pathExistsSync(absPath) || fs.pathExistsSync(distPath)) {
         coverImage = shot.coverImage;
         sourceType = shot.sourceType || 'screenshot';
       }
