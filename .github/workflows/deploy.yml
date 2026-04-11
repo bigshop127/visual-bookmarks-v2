@@ -37,12 +37,7 @@ jobs:
       - name: Initialize State
         run: |
           mkdir -p state
-          cat << 'EOF' > state/manifest.json
-          {
-            "version": "1.0.0",
-            "items": {}
-          }
-          EOF
+          echo '{"version":"1.0.0","items":{}}' > state/manifest.json
 
       - name: Run pipeline
         env:

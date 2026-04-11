@@ -6,29 +6,10 @@ import { loadConfig } from '../utils/config.js';
 
 function chunk(array, size) {
   const result = [];
-  for (let i = 0; i < array.length; i += size) result.push(array.slice(i, i + size));
+  for (let i = 0; i < array.length; i += size) {
+    result.push(array.slice(i, i + size));
+  }
   return result;
-}
-
-// ── 標題清理 ──────────────────────────────────
-// "PHOTOS - Search Results For 'あずみ京平' - 禁漫天堂" → "あずみ京平"
-// "あずみ京平 - 禁漫天堂"                               → "あずみ京平"
-// 其他標題維持原樣
-function cleanTitle(raw) {
-  if (!raw) return raw;
-
-  // 模式1：Search Results For '關鍵字'
-  const m1 = raw.match(/Search Results For [''"「](.+?)[''"」]/i);
-  if (m1) return m1[1].trim();
-
-  // 模式2：關鍵字 - 網站名（去掉後綴）
-  const m2 = raw.match(/^(.+?)\s*[-–|｜]\s*禁漫天堂/);
-  if (m2) return m2[1].trim();
-
-  const m3 = raw.match(/^(.+?)\s*[-–|｜]\s*18[Cc]omic/);
-  if (m3) return m3[1].trim();
-
-  return raw.trim();
 }
 
 export async function run() {
@@ -36,77 +17,108 @@ export async function run() {
   const shardSize = config.pipeline.shardSize || 100;
 
   const normalized = await readJson(path.resolve('output/normalized/bookmarks.normalized.json'));
-  const metadata   = await readJson(path.resolve('output/metadata/metadata-results.json'));
+  const metadata = await readJson(path.resolve('output/metadata/metadata-results.json'));
   const screenshots = await readJson(path.resolve('output/screenshots/screenshot-results.json'), { items: [] });
-  const state      = await readJson(path.resolve('state/manifest.json'));
+  const state = await readJson(path.resolve('state/manifest.json'));
 
-  const metadataById    = Object.fromEntries(metadata.items.map(i => [i.id, i]));
-  const screenshotsById = Object.fromEntries(screenshots.items.map(i => [i.id, i]));
+  const metadataById = Object.fromEntries(metadata.items.map((item) => [item.id, item]));
+  const screenshotsById = Object.fromEntries(screenshots.items.map((item) => [item.id, item]));
 
   let items = normalized.items.map((item) => {
     const meta = metadataById[item.id] || {};
     const shot = screenshotsById[item.id] || {};
     let domain = 'unknown';
-    try { domain = new URL(meta.finalUrl || item.normalizedUrl).hostname.replace(/^www\./, ''); } catch {}
+    try {
+      domain = new URL(meta.finalUrl || item.normalizedUrl).hostname.replace(/^www\./, '');
+    } catch (e) {}
 
-    const rawTitle = meta.title || item.cleanTitle;
+    // 確認截圖檔案實際存在
+    let coverImage = meta.ogImage || 'https://placehold.co/600x400/1a1a24/555566?text=Visual+Bookmarks';
+    let sourceType = meta.ogImage ? 'og' : 'fallback';
+    if (shot.ok && shot.coverImage) {
+      const absPath = path.resolve(shot.coverImage.replace(/^\.\//, ''));
+      const distPath = path.resolve('dist', shot.coverImage.replace(/^\.\//, ''));
+      if (await fs.pathExists(absPath) || await fs.pathExists(distPath)) {
+        coverImage = shot.coverImage;
+        sourceType = shot.sourceType || 'screenshot';
+      }
+    }
 
     return {
       id: item.id,
-      title: cleanTitle(rawTitle),           // ← 清理後的標題
+      title: meta.title || item.cleanTitle,
       description: meta.description || '',
       normalizedUrl: item.normalizedUrl,
       finalUrl: meta.finalUrl || item.normalizedUrl,
       domain,
       tags: [],
       folderPath: item.folderPath,
-      coverImage: shot.coverImage || meta.ogImage || 'https://placehold.co/600x400/1a1a24/555566?text=No+Image',
-      sourceType: shot.sourceType || (meta.ogImage ? 'og' : 'fallback'),
+      coverImage,
+      sourceType,
       siteName: meta.siteName || domain,
       status: state.items[item.id]?.status || 'unknown',
       quarantine: state.items[item.id]?.quarantine || false,
       manualOverride: state.items[item.id]?.manualOverride || false,
-      pinned: false, hidden: false, notes: ''
+      pinned: false,
+      hidden: false,
+      notes: ''
     };
   });
 
   items = await applyOverrides(items);
-  const visibleItems = items.filter(i => !i.hidden);
+  const visibleItems = items.filter((item) => !item.hidden);
   const shards = chunk(visibleItems, shardSize);
 
-  const searchIndex = visibleItems.map(item => ({
+  const searchIndex = visibleItems.map((item) => ({
     id: item.id, title: item.title, description: item.description,
     domain: item.domain, tags: item.tags, folderPath: item.folderPath.join(' / '), status: item.status
   }));
 
-  // Atomic Deploy
+  // ==============================
+  // Atomic Deploy: Staging Swap 機制
+  // ==============================
   const stagingDir = path.resolve('dist-staging');
   await fs.ensureDir(stagingDir);
   await fs.emptyDir(stagingDir);
 
+  // 1. 複製圖片資產 (若有)
   const sourceScreenshots = path.resolve('dist/assets/screenshots');
   if (await fs.pathExists(sourceScreenshots)) {
     await fs.copy(sourceScreenshots, path.resolve(stagingDir, 'assets/screenshots'));
   }
 
+  // 2. 複製 Fuse.js 到本地，實現離線架構
   await fs.ensureDir(path.resolve(stagingDir, 'assets'));
   await fs.copy(path.resolve('node_modules/fuse.js/dist/fuse.mjs'), path.resolve(stagingDir, 'assets/fuse.mjs'));
-  await fs.copy(path.resolve('src/styles/main.css'), path.resolve(stagingDir, 'main.css'));
-  await fs.copy(path.resolve('src/app/app.js'),      path.resolve(stagingDir, 'app.js'));
-  await fs.copy(path.resolve('src/index.html'),      path.resolve(stagingDir, 'index.html'));
 
+  // 3. 把 src 前端檔案拉平到 dist 中
+  await fs.copy(path.resolve('src/styles/main.css'), path.resolve(stagingDir, 'main.css'));
+  await fs.copy(path.resolve('src/app/app.js'), path.resolve(stagingDir, 'app.js'));
+  await fs.copy(path.resolve('src/index.html'), path.resolve(stagingDir, 'index.html'));
+
+  // 4. 寫入 Shard 與索引
   await fs.ensureDir(path.resolve(stagingDir, 'data/shards'));
   await writeJson(path.resolve(stagingDir, 'data/search-index.json'), searchIndex);
   await writeJson(path.resolve(stagingDir, 'data/report.json'), {
     total: visibleItems.length,
-    failed: visibleItems.filter(i => i.status.includes('failed')).length,
-    quarantined: visibleItems.filter(i => i.quarantine).length
+    failed: visibleItems.filter((item) => item.status.includes('failed')).length,
+    quarantined: visibleItems.filter((item) => item.quarantine).length
   });
+  
+  // 5. 寫入 Build Manifest 供前端抓取 Shard 總數
   await writeJson(path.resolve(stagingDir, 'data/build-manifest.json'), { shardCount: shards.length });
-  await Promise.all(shards.map((s, i) => writeJson(path.resolve(stagingDir, `data/shards/items-${i+1}.json`), s)));
 
+  await Promise.all(
+    shards.map((items, index) =>
+      writeJson(path.resolve(stagingDir, `data/shards/items-${index + 1}.json`), items)
+    )
+  );
+
+  // 6. 安全切換 (Swap) dist
   const distDir = path.resolve('dist');
-  if (await fs.pathExists(distDir)) await fs.remove(distDir);
+  if (await fs.pathExists(distDir)) {
+    await fs.remove(distDir);
+  }
   await fs.move(stagingDir, distDir);
 
   await writeJson(path.resolve('output/build/items.all.json'), visibleItems);

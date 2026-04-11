@@ -1,10 +1,11 @@
 import path from 'node:path';
+import fs from 'fs-extra';
 import pLimit from 'p-limit';
 import { loadConfig } from '../utils/config.js';
 import { sha1 } from '../utils/hash.js';
 import { readJson, writeJson } from '../utils/io.js';
-import { captureScreenshot, closeBrowser, downloadOgImage } from './screenshot-worker.js';
 import { resolvePolicy } from '../utils/domain-policy.js';
+import { captureScreenshot, closeBrowser } from './screenshot-worker.js';
 
 export async function run() {
   const config = await loadConfig();
@@ -12,39 +13,36 @@ export async function run() {
   const metadata = await readJson(path.resolve('output/metadata/metadata-results.json'));
   const state = await readJson(path.resolve('state/manifest.json'));
 
+  // 清除舊截圖，避免殘留檔案
+  const screenshotDir = path.resolve('dist/assets/screenshots');
+  await fs.emptyDir(screenshotDir);
+
   const normalizedById = Object.fromEntries(normalized.items.map((item) => [item.id, item]));
   const limit = pLimit(config.pipeline.screenshotConcurrency || 3);
   
-  // 排除 metadata 抓取失敗的項目（有 error 欄位），skipped/retained 的項目保留處理
+  // 只處理 Metadata 階段成功，或是雖然 skip 但缺乏 screenshotHash 的項目
   const targets = metadata.items
-    .filter(item => !item.error)
+    .filter(item => item.status !== 'metadata_failed')
     .map(item => ({ ...normalizedById[item.id], ...item }));
 
   const results = [];
 
   const tasks = targets.map((item) => limit(async () => {
-    // 1. 優先使用 OG Image：下載到本地避免 hotlink 保護
-    //    但如果 domain-policy 設定 skipOgImage，直接跳過走截圖
-    const itemUrl = item.finalUrl || item.normalizedUrl;
-    const policy = await resolvePolicy(itemUrl);
-    const shouldSkipOg = policy?.skipOgImage === true;
-
-    if (item.ogImage && !shouldSkipOg) {
+    // 1. 優先使用 OG Image (極速模式)
+    if (item.ogImage) {
       const ogHash = sha1(item.ogImage);
-      // 如果狀態機顯示已經是這張圖且本地檔案存在，就不用重下載
+      // 如果狀態機顯示已經是這張圖，就不用更新
       if (state.items[item.id]?.screenshotHash === ogHash) {
-        results.push({ id: item.id, ok: true, sourceType: 'og', coverImage: state.items[item.id].localCoverImage || item.ogImage, mode: 'cached' });
+        results.push({ id: item.id, ok: true, sourceType: 'og', coverImage: item.ogImage, mode: 'cached' });
         return;
       }
-      const downloaded = await downloadOgImage(item.ogImage, item.id);
-      const coverImage = downloaded.ok ? downloaded.webPath : item.ogImage;
+      
       state.items[item.id] = {
         ...(state.items[item.id] || {}),
         screenshotHash: ogHash, status: 'screenshot_ok', retryCount: 0, failureReason: null, quarantine: false,
-        localCoverImage: coverImage,
         lastProcessedAt: new Date().toISOString(), lastSuccessAt: new Date().toISOString()
       };
-      results.push({ id: item.id, ok: true, sourceType: 'og', coverImage, mode: downloaded.ok ? 'og-local' : 'og-remote' });
+      results.push({ id: item.id, ok: true, sourceType: 'og', coverImage: item.ogImage, mode: 'new' });
       return;
     }
 
@@ -55,7 +53,15 @@ export async function run() {
       return;
     }
 
-    // 3. 呼叫 Playwright 進行截圖
+    // 3. 檢查 domain policy 是否跳過截圖
+    const targetUrl = item.finalUrl || item.normalizedUrl;
+    const policy = await resolvePolicy(targetUrl);
+    if (policy?.skipScreenshot) {
+      results.push({ id: item.id, ok: false, error: `Domain policy: skipScreenshot (${policy.note || ''})` });
+      return;
+    }
+
+    // 4. 呼叫 Playwright 進行截圖
     const captured = await captureScreenshot(item, config);
     
     if (!captured.ok) {
