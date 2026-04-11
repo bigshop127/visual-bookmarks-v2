@@ -1,5 +1,10 @@
 {
   "siteName": "Visual Bookmarks",
   "timezone": "Asia/Taipei",
-  "defaultPreviewSpeed": 22
+  "defaultPreviewSpeed": 22,
+  "chrome": {
+    "executablePath": "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
+    "userDataDir": "C:\\Users\\bigsh\\AppData\\Local\\Google\\Chrome\\User Data",
+    "profileDirectory": "Default"
+  }
 }

@@ -9,7 +9,9 @@ export async function run() {
   const config = await loadConfig();
   const diff = await readJson(path.resolve('output/diff/diff-results.json'));
   const normalized = await readJson(path.resolve('output/normalized/bookmarks.normalized.json'));
-  const state = await readJson(path.resolve('state/manifest.json'));
+
+  // 加上 fallback，state 不存在時視為全新狀態
+  const state = await readJson(path.resolve('state/manifest.json'), { items: {} });
 
   const normalizedById = Object.fromEntries(normalized.items.map(i => [i.id, i]));
   const metadataItems = [];

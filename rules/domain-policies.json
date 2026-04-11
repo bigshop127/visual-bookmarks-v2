@@ -1,1 +1,32 @@
-[]
+[
+  {
+    "domain": "18comic.vip",
+    "skipOgImage": true,
+    "forceProgressiveScroll": false,
+    "blockResourceTypes": ["media", "font"],
+    "note": "OG image 是網站 logo 非漫畫封面，強制使用 Playwright 截圖"
+  },
+  {
+    "domain": "18comic.org",
+    "skipOgImage": true,
+    "forceProgressiveScroll": false,
+    "blockResourceTypes": ["media", "font"],
+    "note": "同上，18comic 備用域名"
+  }
+]
+[
+  {
+    "domain": "18comic.vip",
+    "skipOgImage": true,
+    "forceProgressiveScroll": false,
+    "blockResourceTypes": ["media", "font"],
+    "note": "OG image 是網站 logo，強制 Playwright 截圖；有 Cloudflare + 年齡驗證"
+  },
+  {
+    "domain": "18comic.org",
+    "skipOgImage": true,
+    "forceProgressiveScroll": false,
+    "blockResourceTypes": ["media", "font"],
+    "note": "18comic 備用域名"
+  }
+]
