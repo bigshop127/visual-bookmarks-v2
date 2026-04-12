@@ -24,8 +24,9 @@ async function sha256(text) {
 
 function saveSession(role) {
   const payload = JSON.stringify({ role, ts: Date.now() });
+  // 兩個身分都用 localStorage，F5 不會登出
   if (role === 'CREATOR') localStorage.setItem(AUTH.CREATOR.key, payload);
-  else sessionStorage.setItem(AUTH.WORM.key, payload);
+  else localStorage.setItem(AUTH.WORM.key, payload);
 }
 
 function loadSession() {
@@ -38,11 +39,11 @@ function loadSession() {
     }
   } catch {}
   try {
-    const raw = sessionStorage.getItem(AUTH.WORM.key);
+    const raw = localStorage.getItem(AUTH.WORM.key);
     if (raw) {
       const { role, ts } = JSON.parse(raw);
       if (Date.now() - ts < AUTH.SESSION_DURATION) return role;
-      sessionStorage.removeItem(AUTH.WORM.key);
+      localStorage.removeItem(AUTH.WORM.key);
     }
   } catch {}
   return null;
@@ -50,7 +51,7 @@ function loadSession() {
 
 function clearSession() {
   localStorage.removeItem(AUTH.CREATOR.key);
-  sessionStorage.removeItem(AUTH.WORM.key);
+  localStorage.removeItem(AUTH.WORM.key);
 }
 
 function keepSessionAlive() {
@@ -110,7 +111,7 @@ function showLoginScreen() {
 const state = {
   items: [], filtered: [],
   role: null,
-  previewSpeed: Number(localStorage.getItem('previewSpeed') || 8),
+  previewSpeed: Number(localStorage.getItem('previewSpeed') || 5),
   recent: JSON.parse(localStorage.getItem('recentViews') || '[]'),
   favorites: JSON.parse(localStorage.getItem('favorites') || '[]'),
   collections: JSON.parse(localStorage.getItem('collections') || '[]'),
@@ -402,14 +403,12 @@ function initSidebar(items) {
 
   updateSidebarCollections();
 
-  // 造物主登出按鈕
-  if (isCreator()) {
-    const logoutBtn = document.createElement('button');
-    logoutBtn.className = 'btn-logout';
-    logoutBtn.textContent = '登出';
-    logoutBtn.addEventListener('click', () => { clearSession(); location.reload(); });
-    document.querySelector('.sidebar').appendChild(logoutBtn);
-  }
+  // 兩個身分都有登出按鈕
+  const logoutBtn = document.createElement('button');
+  logoutBtn.className = 'btn-logout';
+  logoutBtn.textContent = '登出';
+  logoutBtn.addEventListener('click', () => { clearSession(); location.reload(); });
+  document.querySelector('.sidebar').appendChild(logoutBtn);
 
   // 角色標示
   const roleTag = document.createElement('div');
@@ -422,8 +421,8 @@ function initSidebar(items) {
 function wireSpeedSlider() {
   const slider = document.querySelector('#previewSpeed');
   if (!slider) return;
-  slider.min = 6;
-  slider.max = 10;
+  slider.min = 4;
+  slider.max = 8;
   slider.step = 1;
   slider.value = state.previewSpeed;
   slider.addEventListener('input', e => {
