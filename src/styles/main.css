@@ -21,6 +21,13 @@ body { background: var(--bg); color: var(--text); font-family: system-ui,sans-se
 #searchInput:focus { border-color: var(--accent); }
 .toolbar label { font-size: 13px; color: var(--muted); display: flex; align-items: center; gap: 8px; }
 
+/* 角色標示 */
+.role-tag {
+  font-size: 12px; font-weight: 600; padding: 4px 10px;
+  border-radius: 20px; background: rgba(124,106,247,0.18);
+  color: var(--accent); white-space: nowrap; flex-shrink: 0;
+}
+
 /* Layout */
 .layout-main { display: grid; grid-template-columns: 220px 1fr 180px; gap: 20px; padding: 20px 24px; align-items: start; }
 
@@ -43,15 +50,54 @@ body { background: var(--bg); color: var(--text); font-family: system-ui,sans-se
 .btn-add-col { width: 100%; margin-top: 12px; padding: 8px 12px; border-radius: 8px; border: 1px dashed var(--border); background: none; color: var(--muted); font-size: 13px; cursor: pointer; transition: all .15s; }
 .btn-add-col:hover { border-color: var(--accent); color: var(--accent); background: rgba(124,106,247,0.08); }
 
+/* 登出按鈕 */
+.btn-logout {
+  width: 100%; margin-top: 12px; padding: 8px 12px; border-radius: 8px;
+  border: 1px solid rgba(255,71,87,0.3); background: none;
+  color: #ff4757; font-size: 13px; cursor: pointer; transition: all .15s;
+}
+.btn-logout:hover { background: rgba(255,71,87,0.1); border-color: #ff4757; }
+
 /* Grid */
 .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px,1fr)); gap: 16px; }
 
 /* Card */
 .card { position: relative; display: block; background: var(--surface); border-radius: var(--radius); overflow: hidden; text-decoration: none; border: 1px solid var(--border); transition: transform .2s, box-shadow .2s; }
 .card:hover { transform: translateY(-3px); box-shadow: 0 8px 24px rgba(0,0,0,.4); }
-.card-cover-wrap { position: relative; width: 100%; aspect-ratio: 3/4; overflow: hidden; background: #1a1a24; }
-.card-cover { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform var(--preview-duration,22s) linear; }
-.card:hover .card-cover { transform: translateY(var(--preview-shift,-22%)); }
+
+/* 卡片圖片容器：固定 3:4 比例，超出裁掉 */
+.card-cover-wrap {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 3/4;
+  overflow: hidden;
+  background: #1a1a24;
+}
+
+/* 一般封面圖（og image 等）：object-fit cover 填滿 */
+.card-cover {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: transform var(--preview-duration,22s) linear;
+}
+.card:hover .card-cover {
+  transform: translateY(var(--preview-shift,-22%));
+}
+
+/* 截圖專用：寬度撐滿，高度自動，margin-top 由 JS 動態設定 */
+.screenshot-cover {
+  width: 100%;
+  height: auto;
+  object-fit: unset;
+  display: block;
+  transition: transform var(--preview-duration,22s) linear;
+}
+.card:hover .screenshot-cover {
+  transform: translateY(var(--preview-shift,-22%));
+}
+
 .card-overlay { position: absolute; inset: 0; background: linear-gradient(to top, rgba(0,0,0,.7) 0%, transparent 50%); }
 .card-body { padding: 10px 12px 12px; }
 .title { font-size: 13px; font-weight: 500; color: var(--text); line-height: 1.4; margin-bottom: 4px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
@@ -111,3 +157,67 @@ body { background: var(--bg); color: var(--text); font-family: system-ui,sans-se
 .btn-up:disabled, .btn-down:disabled { opacity: .3; cursor: default; }
 .btn-del-col { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 16px; padding: 4px; border-radius: 6px; }
 .btn-del-col:hover { color: #ff4757; background: rgba(255,71,87,.1); }
+
+/* ─── 登入畫面 ─── */
+#loginBackdrop {
+  position: fixed; inset: 0; z-index: 99999;
+  background: radial-gradient(ellipse at center, #1a1a2e 0%, #0f0f17 100%);
+  display: flex; align-items: center; justify-content: center;
+}
+.login-box {
+  background: #1e1e2a;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 40px 36px;
+  width: 380px;
+  box-shadow: 0 24px 80px rgba(0,0,0,.7);
+  display: flex; flex-direction: column; gap: 20px;
+}
+.login-title {
+  font-size: 18px; font-weight: 700;
+  text-align: center; color: var(--text);
+  letter-spacing: .04em;
+}
+.login-roles {
+  display: flex; flex-direction: column; gap: 10px;
+}
+.role-option {
+  display: flex; align-items: center; gap: 10px;
+  padding: 12px 16px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  cursor: pointer;
+  transition: all .15s;
+  color: var(--muted);
+  font-size: 14px;
+}
+.role-option:hover { border-color: var(--accent); color: var(--text); background: rgba(124,106,247,0.08); }
+.role-option input[type="radio"] { accent-color: var(--accent); width: 16px; height: 16px; flex-shrink: 0; }
+.login-pw-wrap input {
+  width: 100%; padding: 10px 16px;
+  border-radius: 10px; border: 1px solid var(--border);
+  background: var(--bg); color: var(--text);
+  font-size: 14px; outline: none;
+}
+.login-pw-wrap input:focus { border-color: var(--accent); }
+.login-error { font-size: 13px; color: #ff4757; text-align: center; min-height: 18px; }
+.login-btn {
+  width: 100%; padding: 12px;
+  border-radius: 10px; border: none;
+  background: var(--accent); color: #fff;
+  font-size: 15px; font-weight: 600;
+  cursor: pointer; transition: opacity .15s;
+}
+.login-btn:hover { opacity: .85; }
+
+/* ─── Toast 通知 ─── */
+.vb-toast {
+  position: fixed; bottom: 32px; left: 50%; transform: translateX(-50%) translateY(20px);
+  background: #2a2a3a; border: 1px solid var(--border);
+  color: var(--text); font-size: 13px;
+  padding: 10px 20px; border-radius: 20px;
+  box-shadow: 0 8px 24px rgba(0,0,0,.5);
+  opacity: 0; transition: opacity .25s, transform .25s;
+  z-index: 99998; white-space: nowrap;
+}
+.vb-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
