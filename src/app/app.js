@@ -110,7 +110,7 @@ function showLoginScreen() {
 const state = {
   items: [], filtered: [],
   role: null,
-  previewSpeed: Number(localStorage.getItem('previewSpeed') || 13),
+  previewSpeed: Number(localStorage.getItem('previewSpeed') || 8),
   recent: JSON.parse(localStorage.getItem('recentViews') || '[]'),
   favorites: JSON.parse(localStorage.getItem('favorites') || '[]'),
   collections: JSON.parse(localStorage.getItem('collections') || '[]'),
@@ -422,8 +422,8 @@ function initSidebar(items) {
 function wireSpeedSlider() {
   const slider = document.querySelector('#previewSpeed');
   if (!slider) return;
-  slider.min = 10;
-  slider.max = 16;
+  slider.min = 6;
+  slider.max = 10;
   slider.step = 1;
   slider.value = state.previewSpeed;
   slider.addEventListener('input', e => {
