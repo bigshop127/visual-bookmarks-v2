@@ -6,6 +6,12 @@ dist/
 .env
 .cache/
 output/
+!output/normalized/
+!output/normalized/**
+!output/metadata/
+!output/metadata/**
+!output/screenshots/
+!output/screenshots/**
 cache/
 playwright-report/
 input/bookmarks/*
