@@ -32,9 +32,11 @@ export async function run() {
       domain = new URL(meta.finalUrl || item.normalizedUrl).hostname.replace(/^www\./, '');
     } catch (e) {}
 
+    const em = shot.extractedMeta || {};
+
     // 確認截圖檔案實際存在
-    let coverImage = meta.ogImage || 'https://placehold.co/600x400/1a1a24/555566?text=Visual+Bookmarks';
-    let sourceType = meta.ogImage ? 'og' : 'fallback';
+    let coverImage = meta.ogImage || em.ogImage || 'https://placehold.co/600x400/1a1a24/555566?text=Visual+Bookmarks';
+    let sourceType = (meta.ogImage || em.ogImage) ? 'og' : 'fallback';
     if (shot.ok && shot.coverImage) {
       const absPath = path.resolve(shot.coverImage.replace(/^\.\//, ''));
       const distPath = path.resolve('dist', shot.coverImage.replace(/^\.\//, ''));
@@ -46,8 +48,8 @@ export async function run() {
 
     return {
       id: item.id,
-      title: meta.title || item.cleanTitle,
-      description: meta.description || '',
+      title: meta.title || em.title || item.cleanTitle,
+      description: meta.description || em.description || '',
       normalizedUrl: item.normalizedUrl,
       finalUrl: meta.finalUrl || item.normalizedUrl,
       domain,
@@ -55,7 +57,7 @@ export async function run() {
       folderPath: item.folderPath,
       coverImage,
       sourceType,
-      siteName: meta.siteName || domain,
+      siteName: meta.siteName || em.siteName || domain,
       status: state.items[item.id]?.status || 'unknown',
       quarantine: state.items[item.id]?.quarantine || false,
       manualOverride: state.items[item.id]?.manualOverride || false,

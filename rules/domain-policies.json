@@ -1,12 +1,1 @@
-[
-  {
-    "domain": "18comic.vip",
-    "skipScreenshot": true,
-    "note": "Site blocks headless browsers, only shows logo"
-  },
-  {
-    "domain": "18comic.org",
-    "skipScreenshot": true,
-    "note": "Mirror domain"
-  }
-]
+[]

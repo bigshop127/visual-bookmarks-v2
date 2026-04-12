@@ -13,21 +13,33 @@ export async function run() {
   const metadata = await readJson(path.resolve('output/metadata/metadata-results.json'));
   const state = await readJson(path.resolve('state/manifest.json'));
 
-  // 清除舊截圖，避免殘留檔案
+  // 確保截圖目錄存在（不清空，保留已有截圖）
   const screenshotDir = path.resolve('dist/assets/screenshots');
-  await fs.emptyDir(screenshotDir);
+  await fs.ensureDir(screenshotDir);
 
   const normalizedById = Object.fromEntries(normalized.items.map((item) => [item.id, item]));
-  const limit = pLimit(config.pipeline.screenshotConcurrency || 3);
+  const limit = pLimit(1); // 單一並發避免 Cloudflare 擋住
   
-  // 只處理 Metadata 階段成功，或是雖然 skip 但缺乏 screenshotHash 的項目
+  // 處理所有項目（包括 metadata 失敗的，用 Playwright 重新抓）
   const targets = metadata.items
-    .filter(item => item.status !== 'metadata_failed')
     .map(item => ({ ...normalizedById[item.id], ...item }));
 
   const results = [];
 
   const tasks = targets.map((item) => limit(async () => {
+    // 0. 如果截圖檔案已存在，直接跳過（支援中斷續跑）
+    const existingPath = path.resolve(`dist/assets/screenshots/${item.id}.jpg`);
+    if (await fs.pathExists(existingPath)) {
+      const webPath = `./assets/screenshots/${item.id}.jpg`;
+      results.push({ id: item.id, ok: true, sourceType: 'screenshot', coverImage: webPath, mode: 'existing' });
+      state.items[item.id] = {
+        ...(state.items[item.id] || {}),
+        status: 'screenshot_ok', retryCount: 0, failureReason: null, quarantine: false,
+        lastProcessedAt: new Date().toISOString(), lastSuccessAt: new Date().toISOString()
+      };
+      return;
+    }
+
     // 1. 優先使用 OG Image (極速模式)
     if (item.ogImage) {
       const ogHash = sha1(item.ogImage);
@@ -73,18 +85,18 @@ export async function run() {
         status: 'screenshot_failed', retryCount: currentRetry, failureReason: captured.error,
         quarantine: willQuarantine, lastProcessedAt: new Date().toISOString()
       };
-      results.push({ id: item.id, ok: false, error: captured.error });
+      results.push({ id: item.id, ok: false, error: captured.error, extractedMeta: captured.extractedMeta });
       return;
     }
 
-    // 4. 截圖成功，更新狀態
+    // 5. 截圖成功，更新狀態
     const screenshotHash = sha1(captured.webPath);
     state.items[item.id] = {
       ...currentState,
       screenshotHash, status: 'screenshot_ok', retryCount: 0, failureReason: null, quarantine: false,
       lastProcessedAt: new Date().toISOString(), lastSuccessAt: new Date().toISOString()
     };
-    results.push({ id: item.id, ok: true, sourceType: 'screenshot', coverImage: captured.webPath, mode: captured.mode });
+    results.push({ id: item.id, ok: true, sourceType: 'screenshot', coverImage: captured.webPath, mode: captured.mode, extractedMeta: captured.extractedMeta });
   }));
 
   await Promise.all(tasks);
