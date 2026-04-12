@@ -31,20 +31,20 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Install Playwright browser
-        run: npx playwright install chromium --with-deps
-
       - name: Initialize State
         run: |
           mkdir -p state
           echo '{"version":"1.0.0","items":{}}' > state/manifest.json
 
-      - name: Run pipeline
+      - name: Run pipeline (skip Phase 2 screenshot)
         env:
           BOOKMARKS_INPUT: ./input/bookmarks/MYchrome_bookmarks.json
           ROOT_FOLDER_NAME: CM 作者
           SITE_BASE_PATH: /
-        run: npm run update:all
+        run: |
+          npm run phase0
+          npm run phase1
+          npm run phase3
 
       - name: Configure Pages
         uses: actions/configure-pages@v5

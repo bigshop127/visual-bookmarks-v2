@@ -1,5 +1,8 @@
 node_modules/
 dist/
+!dist/assets/
+!dist/assets/screenshots/
+!dist/assets/screenshots/**
 .env
 .cache/
 output/
