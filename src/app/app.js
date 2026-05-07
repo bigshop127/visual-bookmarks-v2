@@ -248,7 +248,13 @@ function initDrawer() {
 // ─── 初始化與事件綁定 ───────────────────────────────────────
 function initSidebar(items) {
   const folders = new Set();
-  items.forEach(i => { if (i.folderPath) folders.add(i.folderPath.split(' / ')[0]); });
+  items.forEach(i => { 
+    if (i.folderPath) {
+      // 判斷是否為陣列，若是則取第一個元素，否則視為字串進行分割
+      const folderName = Array.isArray(i.folderPath) ? i.folderPath[0] : String(i.folderPath).split(' / ')[0];
+      if (folderName) folders.add(folderName);
+    }
+  });
   
   const list = document.getElementById('folderList');
   if (list) {
@@ -261,12 +267,35 @@ function initSidebar(items) {
         list.querySelectorAll('li').forEach(li => li.classList.remove('active'));
         e.target.classList.add('active');
         const folder = e.target.dataset.folder;
-        state.filtered = folder === 'all' ? state.items : state.items.filter(i => i.folderPath && i.folderPath.startsWith(folder));
+        state.filtered = folder === 'all' ? state.items : state.items.filter(i => {
+          if (!i.folderPath) return false;
+          const fName = Array.isArray(i.folderPath) ? i.folderPath[0] : String(i.folderPath).split(' / ')[0];
+          return fName === folder;
+        });
         render(state.filtered);
       }
     });
   }
 
+  const actionList = document.getElementById('actionList');
+  if (actionList) {
+    actionList.addEventListener('click', e => {
+      const action = e.target.dataset.action;
+      if (!action) return;
+      actionList.querySelectorAll('li').forEach(li => li.classList.remove('active'));
+      e.target.classList.add('active');
+      
+      if (action === 'recent') {
+        render(state.items.filter(i => state.recent.includes(i.id)).sort((a,b) => state.recent.indexOf(a.id) - state.recent.indexOf(b.id)));
+      } else if (action === 'favorite') {
+        render(state.items.filter(i => state.favorites.includes(i.id)));
+      } else if (action === 'random') {
+        const shuffled = [...state.items].sort(() => 0.5 - Math.random());
+        render(shuffled.slice(0, 5));
+      }
+    });
+  }
+}
   const actionList = document.getElementById('actionList');
   if (actionList) {
     actionList.addEventListener('click', e => {
