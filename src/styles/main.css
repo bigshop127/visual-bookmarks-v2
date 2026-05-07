@@ -221,3 +221,43 @@ body { background: var(--bg); color: var(--text); font-family: system-ui,sans-se
   z-index: 99998; white-space: nowrap;
 }
 .vb-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+/* --- 手機端強制三欄與 PWA 介面優化 --- */
+@media (max-width: 768px) {
+  /* 隱藏兩側側邊欄，讓主內容區塊撐滿手機螢幕 */
+  .layout-main {
+    grid-template-columns: 1fr;
+    padding: 10px;
+  }
+  .sidebar {
+    display: none;
+  }
+  
+  /* 強制網格為三欄等寬 */
+  .grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+  }
+
+  /* 縮小卡片內的文字與內距以適應小螢幕 */
+  .card-body {
+    padding: 6px;
+  }
+  .title {
+    font-size: 11px;
+    -webkit-line-clamp: 1; /* 空間有限，改為單行顯示 */
+  }
+  .meta {
+    display: none; /* 隱藏網域標籤以節省空間 */
+  }
+
+  /* 強制所有截圖在手機端以 cover 填滿，並取消原有的位移效果 */
+  .screenshot-cover {
+    object-fit: cover !important;
+    height: 100% !important;
+    margin-top: 0 !important;
+    transform: none !important;
+  }
+  .card:hover .screenshot-cover {
+    transform: none !important;
+  }
+}
