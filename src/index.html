@@ -4,6 +4,10 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>Visual Bookmarks</title>
+    <link rel="manifest" href="./manifest.json" />
+    <meta name="theme-color" content="#0f0f17" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <link rel="stylesheet" href="./main.css" />
   </head>
   <body>
@@ -13,8 +17,6 @@
         <label>截圖播放速度 <input id="previewSpeed" type="range" min="8" max="40" step="1" /></label>
       </div>
       <div class="layout-main">
-
-        <!-- 左側：書籤資料夾 + 收藏夾 -->
         <aside class="sidebar">
           <div class="sidebar-title">資料夾</div>
           <ul id="folderList" class="menu-list">
@@ -22,13 +24,9 @@
           </ul>
           <button id="btnAddCollection" class="btn-add-col">＋ 新增收藏夾</button>
         </aside>
-
-        <!-- 主內容 -->
         <main>
           <section id="grid" class="grid"></section>
         </main>
-
-        <!-- 右側：功能 -->
         <aside class="sidebar">
           <div class="sidebar-title">功能</div>
           <ul class="menu-list" id="actionList">
@@ -37,11 +35,9 @@
             <li data-action="random">隨機挑選 (5張)</li>
           </ul>
         </aside>
-
       </div>
     </div>
 
-    <!-- 收藏夾編輯 Modal -->
     <div id="editColModal" class="modal-backdrop" style="display:none">
       <div class="modal-box">
         <div class="modal-header">
@@ -57,6 +53,15 @@
       </div>
     </div>
 
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('./sw.js').catch(err => {
+            console.error('ServiceWorker registration failed: ', err);
+          });
+        });
+      }
+    </script>
     <script type="module" src="./app.js"></script>
   </body>
 </html>
