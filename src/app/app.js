@@ -15,74 +15,88 @@ async function sha256(text) {
 function saveSession(role) {
   const payload = JSON.stringify({ role, ts: Date.now() });
   if (role === 'CREATOR') localStorage.setItem(AUTH.CREATOR.key, payload);
-  else sessionStorage.setItem(AUTH.WORM.key, payload);
+  else localStorage.setItem(AUTH.WORM.key, payload);
 }
 
 function loadSession() {
-  const cStr = localStorage.getItem(AUTH.CREATOR.key);
-  if (cStr) {
-    const cData = JSON.parse(cStr);
-    if (Date.now() - cData.ts < AUTH.SESSION_DURATION * 6 * 24) return 'CREATOR';
-  }
-  const wStr = sessionStorage.getItem(AUTH.WORM.key);
-  if (wStr) {
-    const wData = JSON.parse(wStr);
-    if (Date.now() - wData.ts < AUTH.SESSION_DURATION) return 'WORM';
-  }
+  try {
+    const raw = localStorage.getItem(AUTH.CREATOR.key);
+    if (raw) {
+      const { role, ts } = JSON.parse(raw);
+      if (Date.now() - ts < AUTH.SESSION_DURATION) return role;
+      localStorage.removeItem(AUTH.CREATOR.key);
+    }
+  } catch {}
+  try {
+    const raw = localStorage.getItem(AUTH.WORM.key);
+    if (raw) {
+      const { role, ts } = JSON.parse(raw);
+      if (Date.now() - ts < AUTH.SESSION_DURATION) return role;
+      localStorage.removeItem(AUTH.WORM.key);
+    }
+  } catch {}
   return null;
 }
 
+function clearSession() {
+  localStorage.removeItem(AUTH.CREATOR.key);
+  localStorage.removeItem(AUTH.WORM.key);
+}
+
 function keepSessionAlive() {
-  setInterval(() => { if (state.role) saveSession(state.role); }, 60000);
+  setInterval(() => { const r = loadSession(); if (r) saveSession(r); }, 60 * 1000);
 }
 
 function showLoginScreen() {
-  return new Promise((resolve) => {
-    document.body.insertAdjacentHTML('beforeend', `
-      <div class="login-overlay" id="loginOverlay">
-        <div class="login-box">
-          <h2>身分驗證</h2>
+  return new Promise(resolve => {
+    const backdrop = document.createElement('div');
+    backdrop.id = 'loginBackdrop';
+    backdrop.innerHTML = `
+      <div class="login-box">
+        <div class="login-title">⚡ 請選擇您的身分</div>
+        <div class="login-roles">
           <label class="role-option">
-            <input type="radio" name="role" value="CREATOR" checked> ${AUTH.CREATOR.label}
+            <input type="radio" name="role" value="CREATOR" />
+            <span>👑 至高無上的造物主本人</span>
           </label>
-          <label class="role-option" style="margin-bottom: 16px;">
-            <input type="radio" name="role" value="WORM"> ${AUTH.WORM.label}
+          <label class="role-option">
+            <input type="radio" name="role" value="WORM" checked />
+            <span>🐛 我是一隻小淫蟲</span>
           </label>
-          <div class="login-pw-wrap">
-            <input type="password" id="loginPw" placeholder="請輸入訪問密碼..." autocomplete="new-password">
-            <div class="login-error" id="loginError"></div>
-          </div>
-          <button class="login-btn" id="loginBtn">進入網站</button>
         </div>
+        <div class="login-pw-wrap">
+          <input id="loginPw" type="password" placeholder="請輸入密碼..." autocomplete="off" />
+        </div>
+        <div id="loginError" class="login-error"></div>
+        <button id="loginBtn" class="login-btn">進入</button>
       </div>
-    `);
-    const overlay = document.getElementById('loginOverlay');
-    const btn = document.getElementById('loginBtn');
-    const input = document.getElementById('loginPw');
-    const err = document.getElementById('loginError');
-
-    const doLogin = async () => {
-      const pw = input.value.trim();
-      if (!pw) return err.textContent = '請輸入密碼';
-      const role = document.querySelector('input[name="role"]:checked').value;
-      const targetHash = AUTH[role].hash;
-      const inputHash = await sha256(pw);
-      
-      if (inputHash === targetHash) {
-        overlay.remove();
+    `;
+    document.body.appendChild(backdrop);
+    const pwInput = backdrop.querySelector('#loginPw');
+    const errEl = backdrop.querySelector('#loginError');
+    const btn = backdrop.querySelector('#loginBtn');
+    async function attempt() {
+      const role = backdrop.querySelector('input[name="role"]:checked')?.value;
+      const pw = pwInput.value;
+      if (!pw) { errEl.textContent = '請輸入密碼'; return; }
+      const hashed = await sha256(pw);
+      const expected = role === 'CREATOR' ? AUTH.CREATOR.hash : AUTH.WORM.hash;
+      if (hashed === expected) {
         saveSession(role);
+        backdrop.remove();
         resolve(role);
       } else {
-        err.textContent = '密碼錯誤，請重新輸入';
-        input.value = '';
+        errEl.textContent = '密碼錯誤，請再試一次';
+        pwInput.value = '';
+        pwInput.focus();
       }
-    };
-    btn.addEventListener('click', doLogin);
-    input.addEventListener('keypress', e => e.key === 'Enter' && doLogin());
+    }
+    btn.addEventListener('click', attempt);
+    pwInput.addEventListener('keydown', e => { if (e.key === 'Enter') attempt(); });
   });
 }
 
-// ─── 全域狀態與工具 ─────────────────────────────────────────
+// ─── 主狀態與工具 ─────────────────────────────────────────────
 const state = {
   items: [], filtered: [], role: null,
   previewSpeed: Number(localStorage.getItem('previewSpeed') || 22),
@@ -102,8 +116,6 @@ function cleanTitle(raw) {
 }
 
 window.showToast = (msg) => {
-  const existing = document.querySelector('.vb-toast');
-  if (existing) existing.remove();
   const t = document.createElement('div');
   t.className = 'vb-toast';
   t.textContent = msg;
@@ -131,10 +143,7 @@ window.toggleFav = (e, id) => {
   localStorage.setItem('favorites', JSON.stringify(state.favorites));
 };
 
-window.openColPicker = (e, id) => {
-  e.preventDefault(); e.stopPropagation();
-  showToast('收藏夾功能建置中');
-};
+window.openColPicker = (e, id) => { e.preventDefault(); e.stopPropagation(); showToast('收藏夾功能建置中'); };
 
 async function loadAllItems() {
   const manifest = await (await fetch('./data/build-manifest.json')).json();
@@ -146,7 +155,7 @@ async function loadAllItems() {
   return results;
 }
 
-// ─── 卡片渲染 (獨立跳轉按鈕版) ────────────────────────────────
+// ─── 卡片渲染 ───────────────────────────────────────────────
 function createCard(item) {
   const isFav = state.favorites.includes(item.id) ? 'fav-active' : '';
   const isScreenshot = item.coverImage.includes('/screenshots/');
@@ -192,38 +201,34 @@ function render(items) {
   }
 }
 
-// ─── 手機端長按預覽邏輯 (防呆) ──────────────────────────────
-function bindTouchPreview() {
-  let timer = null;
-  let activeCard = null;
-
-  function clear() {
-    if (timer) clearTimeout(timer);
-    timer = null;
-    if (activeCard) {
-      activeCard.classList.remove('preview-active');
-      activeCard = null;
+// ─── 點擊放大與收合邏輯 ─────────────────────────────────────
+function bindClickPreview() {
+  document.addEventListener('click', (e) => {
+    // 排除點擊於按鈕、連結或工具列上的情況
+    if (e.target.closest('button') || e.target.closest('.btn-goto') || e.target.closest('.drawer-handle') || e.target.closest('.toolbar')) {
+      return;
     }
-  }
 
-  document.getElementById('grid').addEventListener('touchstart', (e) => {
     const card = e.target.closest('.card');
-    if (!card) return;
-    if (e.target.closest('button') || e.target.closest('.btn-goto')) return;
+    const activeCards = document.querySelectorAll('.card.preview-active');
 
-    clear();
-    timer = setTimeout(() => {
-      activeCard = card;
-      card.classList.add('preview-active');
-    }, 300);
-  }, { passive: true });
-
-  document.addEventListener('touchmove', clear, { passive: true });
-  document.addEventListener('touchend', clear);
-  document.addEventListener('touchcancel', clear);
+    if (card) {
+      const isActive = card.classList.contains('preview-active');
+      // 點擊任何卡片時，先收起畫面上其他已展開的卡片
+      activeCards.forEach(c => c.classList.remove('preview-active'));
+      
+      // 如果剛剛點擊的這張卡片原本沒有展開，就將它展開
+      if (!isActive) {
+        card.classList.add('preview-active');
+      }
+    } else {
+      // 點擊到卡片以外的空白處，收起所有卡片
+      activeCards.forEach(c => c.classList.remove('preview-active'));
+    }
+  });
 }
 
-// ─── 手機抽屜選單邏輯 ───────────────────────────────────────
+// ─── 側邊欄與抽屜初始化 ─────────────────────────────────────
 function initDrawer() {
   const wrapper = document.getElementById('drawerWrapper');
   const handle = document.getElementById('drawerHandle');
@@ -240,12 +245,9 @@ function initDrawer() {
   });
 
   const mainEl = document.querySelector('main');
-  if(mainEl) {
-    mainEl.addEventListener('touchstart', () => wrapper.classList.remove('open'), { passive: true });
-  }
+  if(mainEl) mainEl.addEventListener('touchstart', () => wrapper.classList.remove('open'), { passive: true });
 }
 
-// ─── 初始化與事件綁定 ───────────────────────────────────────
 function initSidebar(items) {
   const folders = new Set();
   items.forEach(i => { 
@@ -339,7 +341,7 @@ async function main() {
   initSidebar(state.items);
   render(state.items);
   
-  bindTouchPreview();
+  bindClickPreview(); // 取代舊有的 bindTouchPreview()
   initDrawer();
   wireSearch(state.items);
   wireSpeedSlider();
