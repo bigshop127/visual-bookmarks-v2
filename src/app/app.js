@@ -209,17 +209,15 @@ function bindTouchPreview() {
   document.getElementById('grid').addEventListener('touchstart', (e) => {
     const card = e.target.closest('.card');
     if (!card) return;
-    // 點擊按鈕區塊不觸發預覽
     if (e.target.closest('button') || e.target.closest('.btn-goto')) return;
 
     clear();
     timer = setTimeout(() => {
       activeCard = card;
       card.classList.add('preview-active');
-    }, 300); // 0.3 秒判定為長按
+    }, 300);
   }, { passive: true });
 
-  // 手指移動或離開螢幕時立即終止預覽
   document.addEventListener('touchmove', clear, { passive: true });
   document.addEventListener('touchend', clear);
   document.addEventListener('touchcancel', clear);
@@ -241,8 +239,10 @@ function initDrawer() {
     else if (startY - endY > 20) wrapper.classList.remove('open');
   });
 
-  // 往下滑動主區塊時自動收合選單
-  document.querySelector('main').addEventListener('touchstart', () => wrapper.classList.remove('open'), { passive: true });
+  const mainEl = document.querySelector('main');
+  if(mainEl) {
+    mainEl.addEventListener('touchstart', () => wrapper.classList.remove('open'), { passive: true });
+  }
 }
 
 // ─── 初始化與事件綁定 ───────────────────────────────────────
@@ -250,7 +250,6 @@ function initSidebar(items) {
   const folders = new Set();
   items.forEach(i => { 
     if (i.folderPath) {
-      // 判斷是否為陣列，若是則取第一個元素，否則視為字串進行分割
       const folderName = Array.isArray(i.folderPath) ? i.folderPath[0] : String(i.folderPath).split(' / ')[0];
       if (folderName) folders.add(folderName);
     }
@@ -258,15 +257,17 @@ function initSidebar(items) {
   
   const list = document.getElementById('folderList');
   if (list) {
+    list.innerHTML = '<li class="active" data-folder="all">全部</li>';
     Array.from(folders).sort().forEach(f => {
       if (f) list.insertAdjacentHTML('beforeend', `<li data-folder="${f}">${f}</li>`);
     });
     
     list.addEventListener('click', e => {
-      if (e.target.tagName === 'LI') {
-        list.querySelectorAll('li').forEach(li => li.classList.remove('active'));
-        e.target.classList.add('active');
-        const folder = e.target.dataset.folder;
+      const li = e.target.closest('li');
+      if (li) {
+        list.querySelectorAll('li').forEach(el => el.classList.remove('active'));
+        li.classList.add('active');
+        const folder = li.dataset.folder;
         state.filtered = folder === 'all' ? state.items : state.items.filter(i => {
           if (!i.folderPath) return false;
           const fName = Array.isArray(i.folderPath) ? i.folderPath[0] : String(i.folderPath).split(' / ')[0];
@@ -280,29 +281,12 @@ function initSidebar(items) {
   const actionList = document.getElementById('actionList');
   if (actionList) {
     actionList.addEventListener('click', e => {
-      const action = e.target.dataset.action;
+      const li = e.target.closest('li');
+      if (!li) return;
+      const action = li.dataset.action;
       if (!action) return;
-      actionList.querySelectorAll('li').forEach(li => li.classList.remove('active'));
-      e.target.classList.add('active');
-      
-      if (action === 'recent') {
-        render(state.items.filter(i => state.recent.includes(i.id)).sort((a,b) => state.recent.indexOf(a.id) - state.recent.indexOf(b.id)));
-      } else if (action === 'favorite') {
-        render(state.items.filter(i => state.favorites.includes(i.id)));
-      } else if (action === 'random') {
-        const shuffled = [...state.items].sort(() => 0.5 - Math.random());
-        render(shuffled.slice(0, 5));
-      }
-    });
-  }
-}
-  const actionList = document.getElementById('actionList');
-  if (actionList) {
-    actionList.addEventListener('click', e => {
-      const action = e.target.dataset.action;
-      if (!action) return;
-      actionList.querySelectorAll('li').forEach(li => li.classList.remove('active'));
-      e.target.classList.add('active');
+      actionList.querySelectorAll('li').forEach(el => el.classList.remove('active'));
+      li.classList.add('active');
       
       if (action === 'recent') {
         render(state.items.filter(i => state.recent.includes(i.id)).sort((a,b) => state.recent.indexOf(a.id) - state.recent.indexOf(b.id)));
@@ -328,8 +312,10 @@ function wireSpeedSlider() {
 }
 
 function wireSearch(items) {
+  const searchInput = document.querySelector('#searchInput');
+  if(!searchInput) return;
   const fuse = new Fuse(items, { keys: ['title', 'domain'], threshold: 0.35 });
-  document.querySelector('#searchInput').addEventListener('input', e => {
+  searchInput.addEventListener('input', e => {
     const val = e.target.value.trim();
     render(val ? fuse.search(val).map(r => r.item) : state.filtered);
   });
@@ -344,7 +330,8 @@ async function main() {
   const roleTag = document.createElement('div');
   roleTag.className = 'role-tag';
   roleTag.textContent = isCreator() ? '👑 造物主' : '🐛 小淫蟲';
-  document.querySelector('.toolbar').prepend(roleTag);
+  const toolbar = document.querySelector('.toolbar');
+  if(toolbar) toolbar.prepend(roleTag);
 
   state.items = await loadAllItems();
   state.filtered = state.items;
