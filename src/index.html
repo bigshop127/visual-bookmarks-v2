@@ -12,29 +12,38 @@
   </head>
   <body>
     <div class="app-shell">
-      <div class="toolbar">
+      <div class="toolbar" id="toolbar">
         <input id="searchInput" type="search" placeholder="搜尋網站、網域..." />
         <label>截圖播放速度 <input id="previewSpeed" type="range" min="8" max="40" step="1" /></label>
       </div>
+
       <div class="layout-main">
-        <aside class="sidebar">
-          <div class="sidebar-title">資料夾</div>
-          <ul id="folderList" class="menu-list">
-            <li class="active" data-folder="all">全部</li>
-          </ul>
-          <button id="btnAddCollection" class="btn-add-col">＋ 新增收藏夾</button>
-        </aside>
+        <div class="drawer-wrapper" id="drawerWrapper">
+          <aside class="sidebar">
+            <div class="sidebar-title">資料夾</div>
+            <ul id="folderList" class="menu-list">
+              <li class="active" data-folder="all">全部</li>
+            </ul>
+            <button id="btnAddCollection" class="btn-add-col">＋ 新增收藏夾</button>
+          </aside>
+
+          <aside class="sidebar">
+            <div class="sidebar-title">功能</div>
+            <ul class="menu-list" id="actionList">
+              <li data-action="recent">最近觀看</li>
+              <li data-action="favorite">我的最愛</li>
+              <li data-action="random">隨機挑選 (5張)</li>
+            </ul>
+          </aside>
+
+          <div class="drawer-handle" id="drawerHandle">
+            <div class="drawer-handle-bar"></div>
+          </div>
+        </div>
+
         <main>
           <section id="grid" class="grid"></section>
         </main>
-        <aside class="sidebar">
-          <div class="sidebar-title">功能</div>
-          <ul class="menu-list" id="actionList">
-            <li data-action="recent">最近觀看</li>
-            <li data-action="favorite">我的最愛</li>
-            <li data-action="random">隨機挑選 (5張)</li>
-          </ul>
-        </aside>
       </div>
     </div>
 
@@ -55,11 +64,7 @@
 
     <script>
       if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-          navigator.serviceWorker.register('./sw.js').catch(err => {
-            console.error('ServiceWorker registration failed: ', err);
-          });
-        });
+        window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(() => {}));
       }
     </script>
     <script type="module" src="./app.js"></script>
