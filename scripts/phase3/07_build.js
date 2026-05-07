@@ -34,7 +34,6 @@ export async function run() {
 
     const em = shot.extractedMeta || {};
 
-    // 確認截圖檔案實際存在
     let coverImage = meta.ogImage || em.ogImage || 'https://placehold.co/600x400/1a1a24/555566?text=Visual+Bookmarks';
     let sourceType = (meta.ogImage || em.ogImage) ? 'og' : 'fallback';
     if (shot.ok && shot.coverImage) {
@@ -76,29 +75,31 @@ export async function run() {
     domain: item.domain, tags: item.tags, folderPath: item.folderPath.join(' / '), status: item.status
   }));
 
-  // ==============================
-  // Atomic Deploy: Staging Swap 機制
-  // ==============================
   const stagingDir = path.resolve('dist-staging');
   await fs.ensureDir(stagingDir);
   await fs.emptyDir(stagingDir);
 
-  // 1. 複製圖片資產 (若有)
   const sourceScreenshots = path.resolve('dist/assets/screenshots');
   if (await fs.pathExists(sourceScreenshots)) {
     await fs.copy(sourceScreenshots, path.resolve(stagingDir, 'assets/screenshots'));
   }
 
-  // 2. 複製 Fuse.js 到本地，實現離線架構
   await fs.ensureDir(path.resolve(stagingDir, 'assets'));
   await fs.copy(path.resolve('node_modules/fuse.js/dist/fuse.mjs'), path.resolve(stagingDir, 'assets/fuse.mjs'));
 
-  // 3. 把 src 前端檔案拉平到 dist 中
+  // 複製前端資源並包含 PWA 檔案
   await fs.copy(path.resolve('src/styles/main.css'), path.resolve(stagingDir, 'main.css'));
   await fs.copy(path.resolve('src/app/app.js'), path.resolve(stagingDir, 'app.js'));
   await fs.copy(path.resolve('src/index.html'), path.resolve(stagingDir, 'index.html'));
+  
+  // 確保 manifest.json 與 sw.js 被正確部署
+  if (await fs.pathExists(path.resolve('src/manifest.json'))) {
+    await fs.copy(path.resolve('src/manifest.json'), path.resolve(stagingDir, 'manifest.json'));
+  }
+  if (await fs.pathExists(path.resolve('src/sw.js'))) {
+    await fs.copy(path.resolve('src/sw.js'), path.resolve(stagingDir, 'sw.js'));
+  }
 
-  // 4. 寫入 Shard 與索引
   await fs.ensureDir(path.resolve(stagingDir, 'data/shards'));
   await writeJson(path.resolve(stagingDir, 'data/search-index.json'), searchIndex);
   await writeJson(path.resolve(stagingDir, 'data/report.json'), {
@@ -107,7 +108,6 @@ export async function run() {
     quarantined: visibleItems.filter((item) => item.quarantine).length
   });
   
-  // 5. 寫入 Build Manifest 供前端抓取 Shard 總數
   await writeJson(path.resolve(stagingDir, 'data/build-manifest.json'), { shardCount: shards.length });
 
   await Promise.all(
@@ -116,7 +116,6 @@ export async function run() {
     )
   );
 
-  // 6. 安全切換 (Swap) dist
   const distDir = path.resolve('dist');
   if (await fs.pathExists(distDir)) {
     await fs.remove(distDir);
