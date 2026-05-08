@@ -14,33 +14,23 @@ async function sha256(text) {
 
 function saveSession(role) {
   const payload = JSON.stringify({ role, ts: Date.now() });
-  if (role === 'CREATOR') localStorage.setItem(AUTH.CREATOR.key, payload);
-  else localStorage.setItem(AUTH.WORM.key, payload);
+  localStorage.setItem(role === 'CREATOR' ? AUTH.CREATOR.key : AUTH.WORM.key, payload);
 }
 
 function loadSession() {
   try {
-    const raw = localStorage.getItem(AUTH.CREATOR.key);
-    if (raw) {
-      const { role, ts } = JSON.parse(raw);
-      if (Date.now() - ts < AUTH.SESSION_DURATION) return role;
-      localStorage.removeItem(AUTH.CREATOR.key);
+    const cRaw = localStorage.getItem(AUTH.CREATOR.key);
+    if (cRaw) {
+      const { role, ts } = JSON.parse(cRaw);
+      if (Date.now() - ts < AUTH.SESSION_DURATION * 100) return role;
     }
-  } catch {}
-  try {
-    const raw = localStorage.getItem(AUTH.WORM.key);
-    if (raw) {
-      const { role, ts } = JSON.parse(raw);
-      if (Date.now() - ts < AUTH.SESSION_DURATION) return role;
-      localStorage.removeItem(AUTH.WORM.key);
+    const wRaw = localStorage.getItem(AUTH.WORM.key);
+    if (wRaw) {
+      const { role, ts } = JSON.parse(wRaw);
+      if (Date.now() - ts < AUTH.SESSION_DURATION * 100) return role;
     }
   } catch {}
   return null;
-}
-
-function clearSession() {
-  localStorage.removeItem(AUTH.CREATOR.key);
-  localStorage.removeItem(AUTH.WORM.key);
 }
 
 function keepSessionAlive() {
@@ -55,18 +45,10 @@ function showLoginScreen() {
       <div class="login-box">
         <div class="login-title">⚡ 請選擇您的身分</div>
         <div class="login-roles">
-          <label class="role-option">
-            <input type="radio" name="role" value="CREATOR" />
-            <span>👑 至高無上的造物主本人</span>
-          </label>
-          <label class="role-option">
-            <input type="radio" name="role" value="WORM" checked />
-            <span>🐛 我是一隻小淫蟲</span>
-          </label>
+          <label class="role-option"><input type="radio" name="role" value="CREATOR" /><span>👑 至高無上的造物主本人</span></label>
+          <label class="role-option"><input type="radio" name="role" value="WORM" checked /><span>🐛 我是一隻小淫蟲</span></label>
         </div>
-        <div class="login-pw-wrap">
-          <input id="loginPw" type="password" placeholder="請輸入密碼..." autocomplete="off" />
-        </div>
+        <div class="login-pw-wrap"><input id="loginPw" type="password" placeholder="請輸入密碼..." autocomplete="off" /></div>
         <div id="loginError" class="login-error"></div>
         <button id="loginBtn" class="login-btn">進入</button>
       </div>
@@ -77,18 +59,11 @@ function showLoginScreen() {
     const btn = backdrop.querySelector('#loginBtn');
     async function attempt() {
       const role = backdrop.querySelector('input[name="role"]:checked')?.value;
-      const pw = pwInput.value;
-      if (!pw) { errEl.textContent = '請輸入密碼'; return; }
-      const hashed = await sha256(pw);
-      const expected = role === 'CREATOR' ? AUTH.CREATOR.hash : AUTH.WORM.hash;
-      if (hashed === expected) {
-        saveSession(role);
-        backdrop.remove();
-        resolve(role);
+      const hashed = await sha256(pwInput.value);
+      if (hashed === (role === 'CREATOR' ? AUTH.CREATOR.hash : AUTH.WORM.hash)) {
+        saveSession(role); backdrop.remove(); resolve(role);
       } else {
-        errEl.textContent = '密碼錯誤，請再試一次';
-        pwInput.value = '';
-        pwInput.focus();
+        errEl.textContent = '密碼錯誤'; pwInput.value = ''; pwInput.focus();
       }
     }
     btn.addEventListener('click', attempt);
@@ -96,31 +71,25 @@ function showLoginScreen() {
   });
 }
 
-// ─── 主狀態與工具 ─────────────────────────────────────────────
+// ─── 狀態與工具 ─────────────────────────────────────────────
 const state = {
   items: [], filtered: [], role: null,
   previewSpeed: Number(localStorage.getItem('previewSpeed') || 22),
   recent: JSON.parse(localStorage.getItem('recentViews') || '[]'),
   favorites: JSON.parse(localStorage.getItem('favorites') || '[]'),
-  collections: JSON.parse(localStorage.getItem('collections') || '[]'),
 };
 
 function isCreator() { return state.role === 'CREATOR'; }
-function saveCollections() { localStorage.setItem('collections', JSON.stringify(state.collections)); }
 
 function cleanTitle(raw) {
   if (!raw) return raw;
   const quoted = raw.match(/['"「」『』](.+?)['"「」『』]/);
-  if (quoted) return quoted[1].trim();
-  return raw.replace(/^PHOTOS\s*[-–]\s*Search Results For\s*/i, '').replace(/\s*[-–]\s*禁漫天堂\s*$/i, '').replace(/^Search Results For\s*/i, '').trim() || raw;
+  return quoted ? quoted[1].trim() : raw.replace(/PHOTOS\s*[-–]\s*Search Results For\s*/i, '').replace(/\s*[-–]\s*禁漫天堂\s*$/i, '').trim();
 }
 
 window.showToast = (msg) => {
-  const t = document.createElement('div');
-  t.className = 'vb-toast';
-  t.textContent = msg;
-  document.body.appendChild(t);
-  setTimeout(() => t.classList.add('show'), 10);
+  const t = document.createElement('div'); t.className = 'vb-toast'; t.textContent = msg;
+  document.body.appendChild(t); setTimeout(() => t.classList.add('show'), 10);
   setTimeout(() => { t.classList.remove('show'); setTimeout(() => t.remove(), 300); }, 2500);
 };
 
@@ -131,19 +100,42 @@ window.trackView = (id) => {
 
 window.toggleFav = (e, id) => {
   e.preventDefault(); e.stopPropagation();
-  if (state.favorites.includes(id)) {
-    state.favorites = state.favorites.filter(x => x !== id);
-    e.target.classList.remove('fav-active');
-    showToast('已移出我的最愛');
-  } else {
-    state.favorites.push(id);
-    e.target.classList.add('fav-active');
-    showToast('已加入我的最愛');
-  }
+  const idx = state.favorites.indexOf(id);
+  if (idx > -1) { state.favorites.splice(idx, 1); e.target.classList.remove('fav-active'); showToast('已移出我的最愛'); }
+  else { state.favorites.push(id); e.target.classList.add('fav-active'); showToast('已加入我的最愛'); }
   localStorage.setItem('favorites', JSON.stringify(state.favorites));
 };
 
 window.openColPicker = (e, id) => { e.preventDefault(); e.stopPropagation(); showToast('收藏夾功能建置中'); };
+
+// ─── [核心功能] 專屬 App 喚醒與跳轉邏輯 ──────────────────────────
+window.handleJump = (e, url) => {
+  e.preventDefault();
+  e.stopPropagation();
+
+  // 識別是否為禁漫天堂的連結 (相簿 ID 提取)
+  const jmRegex = /album\/(\d+)/;
+  const match = url.match(jmRegex);
+  
+  if (match && (url.includes('18comic') || url.includes('jmcomic'))) {
+    const albumId = match[1];
+    const appUri = `jmcomic://album/${albumId}`;
+    
+    showToast('正在嘗試開啟禁漫 App...');
+    const start = Date.now();
+    window.location.href = appUri; // 嘗試喚醒 App
+    
+    // Fallback: 如果 1.5 秒後仍留在網頁，代表沒裝 App 或喚醒失敗，則改用瀏覽器開啟
+    setTimeout(() => {
+      if (Date.now() - start < 2000) {
+        window.open(url, '_blank');
+      }
+    }, 1500);
+  } else {
+    // 一般連結直接開啟
+    window.open(url, '_blank');
+  }
+};
 
 async function loadAllItems() {
   const manifest = await (await fetch('./data/build-manifest.json')).json();
@@ -155,30 +147,25 @@ async function loadAllItems() {
   return results;
 }
 
-// ─── 卡片渲染 (修復為 div 結構阻斷全域跳轉) ──────────────────────
+// ─── 卡片渲染 (整合 App 跳轉) ──────────────────────────────────
 function createCard(item) {
   const isFav = state.favorites.includes(item.id) ? 'fav-active' : '';
   const isScreenshot = item.coverImage.includes('/screenshots/');
   const displayTitle = cleanTitle(item.title);
 
-  // 外層改為 div，避免點選預覽時觸發跳轉
   return `
     <div class="card" data-id="${item.id}" style="--preview-duration:${state.previewSpeed}s; --preview-shift:-22%;">
       <button class="btn-fav ${isFav}" onclick="toggleFav(event, '${item.id}')">❤</button>
       <button class="btn-collect" onclick="openColPicker(event, '${item.id}')">＋</button>
-      
       <div class="card-cover-wrap">
-        <img class="card-cover${isScreenshot ? ' screenshot-cover' : ''}"
-             src="${item.coverImage}" loading="lazy" ${isScreenshot ? 'data-crop="380"' : ''} />
+        <img class="card-cover${isScreenshot ? ' screenshot-cover' : ''}" src="${item.coverImage}" loading="lazy" ${isScreenshot ? 'data-crop="380"' : ''} />
         <div class="card-overlay"></div>
       </div>
-      
       <div class="card-body">
         <h3 class="title">${displayTitle}</h3>
         <div class="meta">${item.domain}</div>
       </div>
-      
-      <a class="btn-goto" href="${item.finalUrl}" target="_blank" onclick="trackView('${item.id}')">前往 ➔</a>
+      <a class="btn-goto" href="${item.finalUrl}" onclick="trackView('${item.id}'); handleJump(event, '${item.finalUrl}')">前往 ➔</a>
     </div>
   `;
 }
@@ -186,7 +173,7 @@ function createCard(item) {
 function applyCropOffsets() {
   document.querySelectorAll('img.screenshot-cover[data-crop]').forEach(img => {
     const apply = () => img.style.marginTop = `-${parseInt(img.dataset.crop) * (img.offsetWidth / 1280)}px`;
-    if (img.complete && img.naturalWidth) apply(); else img.addEventListener('load', apply, { once: true });
+    if (img.complete) apply(); else img.addEventListener('load', apply, { once: true });
   });
 }
 
@@ -195,48 +182,32 @@ function render(items) {
   root.innerHTML = items.slice(0, 20).map(createCard).join('');
   setTimeout(applyCropOffsets, 50);
   if (items.length > 20) {
-    setTimeout(() => { 
-      root.insertAdjacentHTML('beforeend', items.slice(20).map(createCard).join('')); 
-      applyCropOffsets(); 
-    }, 80);
+    setTimeout(() => { root.insertAdjacentHTML('beforeend', items.slice(20).map(createCard).join('')); applyCropOffsets(); }, 80);
   }
 }
 
 // ─── 點擊放大與收合邏輯 ─────────────────────────────────────
 function bindClickPreview() {
   document.addEventListener('click', (e) => {
-    // 排除點擊於跳轉按鈕、其他按鈕或工具列的情況
-    if (e.target.closest('button') || e.target.closest('.btn-goto') || e.target.closest('.drawer-handle') || e.target.closest('.toolbar')) {
-      return;
-    }
-
+    if (e.target.closest('button') || e.target.closest('.btn-goto') || e.target.closest('.drawer-handle') || e.target.closest('.toolbar')) return;
     const card = e.target.closest('.card');
     const activeCards = document.querySelectorAll('.card.preview-active');
-
     if (card) {
       const isActive = card.classList.contains('preview-active');
-      // 點擊卡片時，先收合所有已展開的卡片
       activeCards.forEach(c => c.classList.remove('preview-active'));
-      
-      // 若原先未展開，則觸發展開
-      if (!isActive) {
-        card.classList.add('preview-active');
-      }
+      if (!isActive) card.classList.add('preview-active');
     } else {
-      // 點擊空白處時收合所有卡片
       activeCards.forEach(c => c.classList.remove('preview-active'));
     }
   });
 }
 
-// ─── 側邊欄與抽屜初始化 ─────────────────────────────────────
+// ─── 初始化選單與搜尋 ───────────────────────────────────────
 function initDrawer() {
   const wrapper = document.getElementById('drawerWrapper');
   const handle = document.getElementById('drawerHandle');
   if (!wrapper || !handle) return;
-
   handle.addEventListener('click', () => wrapper.classList.toggle('open'));
-
   let startY = 0;
   handle.addEventListener('touchstart', e => startY = e.touches[0].clientY, { passive: true });
   handle.addEventListener('touchend', e => {
@@ -244,108 +215,78 @@ function initDrawer() {
     if (endY - startY > 20) wrapper.classList.add('open');
     else if (startY - endY > 20) wrapper.classList.remove('open');
   });
-
-  const mainEl = document.querySelector('main');
-  if(mainEl) mainEl.addEventListener('touchstart', () => wrapper.classList.remove('open'), { passive: true });
+  const m = document.querySelector('main');
+  if(m) m.addEventListener('touchstart', () => wrapper.classList.remove('open'), { passive: true });
 }
 
 function initSidebar(items) {
   const folders = new Set();
-  items.forEach(i => { 
+  items.forEach(i => {
     if (i.folderPath) {
-      const folderName = Array.isArray(i.folderPath) ? i.folderPath[0] : String(i.folderPath).split(' / ')[0];
-      if (folderName) folders.add(folderName);
+      const f = Array.isArray(i.folderPath) ? i.folderPath[0] : String(i.folderPath).split(' / ')[0];
+      if (f) folders.add(f);
     }
   });
-  
   const list = document.getElementById('folderList');
   if (list) {
     list.innerHTML = '<li class="active" data-folder="all">全部</li>';
-    Array.from(folders).sort().forEach(f => {
-      if (f) list.insertAdjacentHTML('beforeend', `<li data-folder="${f}">${f}</li>`);
-    });
-    
+    Array.from(folders).sort().forEach(f => list.insertAdjacentHTML('beforeend', `<li data-folder="${f}">${f}</li>`));
     list.addEventListener('click', e => {
       const li = e.target.closest('li');
       if (li) {
-        list.querySelectorAll('li').forEach(el => el.classList.remove('active'));
-        li.classList.add('active');
-        const folder = li.dataset.folder;
-        state.filtered = folder === 'all' ? state.items : state.items.filter(i => {
-          if (!i.folderPath) return false;
-          const fName = Array.isArray(i.folderPath) ? i.folderPath[0] : String(i.folderPath).split(' / ')[0];
-          return fName === folder;
-        });
+        list.querySelectorAll('li').forEach(el => el.classList.remove('active')); li.classList.add('active');
+        const f = li.dataset.folder;
+        state.filtered = f === 'all' ? state.items : state.items.filter(i => (Array.isArray(i.folderPath) ? i.folderPath[0] : String(i.folderPath).split(' / ')[0]) === f);
         render(state.filtered);
       }
     });
   }
-
   const actionList = document.getElementById('actionList');
   if (actionList) {
     actionList.addEventListener('click', e => {
-      const li = e.target.closest('li');
-      if (!li) return;
-      const action = li.dataset.action;
-      if (!action) return;
-      actionList.querySelectorAll('li').forEach(el => el.classList.remove('active'));
-      li.classList.add('active');
-      
-      if (action === 'recent') {
-        render(state.items.filter(i => state.recent.includes(i.id)).sort((a,b) => state.recent.indexOf(a.id) - state.recent.indexOf(b.id)));
-      } else if (action === 'favorite') {
-        render(state.items.filter(i => state.favorites.includes(i.id)));
-      } else if (action === 'random') {
-        const shuffled = [...state.items].sort(() => 0.5 - Math.random());
-        render(shuffled.slice(0, 5));
-      }
+      const li = e.target.closest('li'); if (!li) return;
+      const act = li.dataset.action; if (!act) return;
+      actionList.querySelectorAll('li').forEach(el => el.classList.remove('active')); li.classList.add('active');
+      if (act === 'recent') render(state.items.filter(i => state.recent.includes(i.id)).sort((a,b) => state.recent.indexOf(a.id) - state.recent.indexOf(b.id)));
+      else if (act === 'favorite') render(state.items.filter(i => state.favorites.includes(i.id)));
+      else if (act === 'random') render([...state.items].sort(() => 0.5 - Math.random()).slice(0, 5));
     });
   }
 }
 
 function wireSpeedSlider() {
-  const slider = document.querySelector('#previewSpeed');
-  if (!slider) return;
-  slider.value = state.previewSpeed;
-  slider.addEventListener('input', e => {
+  const s = document.querySelector('#previewSpeed'); if (!s) return;
+  s.value = state.previewSpeed;
+  s.addEventListener('input', e => {
     state.previewSpeed = Number(e.target.value);
     localStorage.setItem('previewSpeed', state.previewSpeed);
-    document.querySelectorAll('.card').forEach(card => card.style.setProperty('--preview-duration', `${state.previewSpeed}s`));
+    document.querySelectorAll('.card').forEach(c => c.style.setProperty('--preview-duration', `${state.previewSpeed}s`));
   });
 }
 
 function wireSearch(items) {
-  const searchInput = document.querySelector('#searchInput');
-  if(!searchInput) return;
+  const input = document.querySelector('#searchInput'); if(!input) return;
   const fuse = new Fuse(items, { keys: ['title', 'domain'], threshold: 0.35 });
-  searchInput.addEventListener('input', e => {
+  input.addEventListener('input', e => {
     const val = e.target.value.trim();
     render(val ? fuse.search(val).map(r => r.item) : state.filtered);
   });
 }
 
-// ─── 入口 ────────────────────────────────────────────────────
 async function main() {
   state.role = loadSession();
   if (!state.role) state.role = await showLoginScreen();
   keepSessionAlive();
-
-  const roleTag = document.createElement('div');
-  roleTag.className = 'role-tag';
-  roleTag.textContent = isCreator() ? '👑 造物主' : '🐛 小淫蟲';
-  const toolbar = document.querySelector('.toolbar');
-  if(toolbar) toolbar.prepend(roleTag);
-
+  const tb = document.querySelector('.toolbar');
+  if(tb) {
+    const tag = document.createElement('div'); tag.className = 'role-tag';
+    tag.textContent = isCreator() ? '👑 造物主' : '🐛 小淫蟲';
+    tb.prepend(tag);
+  }
   state.items = await loadAllItems();
   state.filtered = state.items;
-  
-  initSidebar(state.items);
-  render(state.items);
-  
-  bindClickPreview();
-  initDrawer();
-  wireSearch(state.items);
-  wireSpeedSlider();
+  initSidebar(state.items); render(state.items);
+  bindClickPreview(); initDrawer(); wireSearch(state.items); wireSpeedSlider();
 }
 
 main();
