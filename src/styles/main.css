@@ -21,7 +21,6 @@ body { background: var(--bg); color: var(--text); font-family: system-ui,sans-se
 #searchInput:focus { border-color: var(--accent); }
 .toolbar label { font-size: 13px; color: var(--muted); display: flex; align-items: center; gap: 8px; }
 
-/* 角色標示 */
 .role-tag {
   font-size: 12px; font-weight: 600; padding: 4px 10px;
   border-radius: 20px; background: rgba(124,106,247,0.18);
@@ -38,11 +37,8 @@ body { background: var(--bg); color: var(--text); font-family: system-ui,sans-se
 .menu-list li { padding: 9px 12px; margin-bottom: 2px; border-radius: 8px; cursor: pointer; color: var(--muted); font-size: 14px; transition: all .15s; display: flex; align-items: center; justify-content: space-between; gap: 6px; }
 .menu-list li:hover { background: rgba(255,255,255,0.05); color: var(--text); }
 .menu-list li.active { background: rgba(124,106,247,0.18); color: #fff; font-weight: 600; }
-.menu-section { font-size: 11px !important; color: var(--muted) !important; padding: 10px 4px 4px !important; cursor: default !important; letter-spacing:.04em; }
-.menu-section:hover { background: none !important; }
 .col-count { font-size: 11px; background: rgba(255,255,255,0.1); border-radius: 10px; padding: 1px 7px; }
 
-/* 按鈕樣式 */
 .btn-add-col { width: 100%; margin-top: 12px; padding: 8px 12px; border-radius: 8px; border: 1px dashed var(--border); background: none; color: var(--muted); font-size: 13px; cursor: pointer; transition: all .15s; }
 .btn-add-col:hover { border-color: var(--accent); color: var(--accent); background: rgba(124,106,247,0.08); }
 .btn-logout { width: 100%; margin-top: 12px; padding: 8px 12px; border-radius: 8px; border: 1px solid rgba(255,71,87,0.3); background: none; color: #ff4757; font-size: 13px; cursor: pointer; transition: all .15s; }
@@ -51,8 +47,14 @@ body { background: var(--bg); color: var(--text); font-family: system-ui,sans-se
 /* Grid */
 .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px,1fr)); gap: 16px; }
 
-/* Card (純點擊切換，取消滑鼠 hover 放大效果) */
-.card { position: relative; display: block; background: var(--surface); border-radius: var(--radius); overflow: hidden; text-decoration: none; border: 1px solid var(--border); transition: transform .2s cubic-bezier(0.2, 0, 0.2, 1), box-shadow .2s ease; cursor: pointer; -webkit-touch-callout: none; user-select: none; }
+/* Card */
+.card { 
+  position: relative; display: block; background: var(--surface); border-radius: var(--radius); 
+  overflow: hidden; text-decoration: none; border: 1px solid var(--border); 
+  transition: transform .2s cubic-bezier(0.2, 0, 0.2, 1), box-shadow .2s ease; 
+  cursor: pointer; -webkit-touch-callout: none; user-select: none; 
+  transform-origin: center top; /* 電腦端預設對齊上邊緣，防止向上遮擋 */
+}
 .card-cover-wrap { position: relative; width: 100%; aspect-ratio: 3/4; overflow: hidden; background: #1a1a24; pointer-events: none; }
 .card-cover { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform var(--preview-duration,22s) linear; }
 .screenshot-cover { width: 100%; height: auto; object-fit: unset; display: block; transition: transform var(--preview-duration,22s) linear; }
@@ -61,7 +63,7 @@ body { background: var(--bg); color: var(--text); font-family: system-ui,sans-se
 .title { font-size: 13px; font-weight: 500; color: var(--text); line-height: 1.4; margin-bottom: 4px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
 .meta { font-size: 11px; color: var(--muted); }
 
-/* 獨立跳轉按鈕 */
+/* 獨立前往按鈕 */
 .btn-goto {
   position: absolute; bottom: 12px; right: 12px; z-index: 20;
   background-color: #1a4b8c; color: #000000;
@@ -85,11 +87,11 @@ body { background: var(--bg); color: var(--text); font-family: system-ui,sans-se
 .btn-fav:hover { background: #ff4757; border-color: #ff4757; }
 .fav-active { color: #ff4757 !important; border-color: rgba(255,71,87,.5) !important; }
 
-/* ─── 點擊放大與滾動預覽狀態 ─── */
+/* ─── 點擊放大與滾動預覽狀態 (電腦版預設) ─── */
 .card.preview-active {
   transform: scale(1.5);
   box-shadow: 0 20px 50px rgba(0,0,0,0.9);
-  z-index: 50;
+  z-index: 400; /* 高於所有工具列與選單 */
 }
 .card.preview-active .card-cover, .card.preview-active .screenshot-cover {
   transform: translateY(var(--preview-shift,-22%));
@@ -109,7 +111,6 @@ body { background: var(--bg); color: var(--text); font-family: system-ui,sans-se
   .layout-main { display: block; padding: 0; flex: 1; overflow: hidden; position: relative; }
   main { display: block; height: 100%; overflow-y: auto; padding: 16px; }
 
-  /* 下拉抽屜選單容器 */
   .drawer-wrapper {
     display: block; position: absolute; top: 0; left: 0; right: 0; z-index: 200;
     background: #1e1e2a; padding-top: 10px;
@@ -119,7 +120,6 @@ body { background: var(--bg); color: var(--text); font-family: system-ui,sans-se
   }
   .drawer-wrapper.open { transform: translateY(0); }
   
-  /* 下拉提示把手 */
   .drawer-handle {
     display: flex; position: absolute; bottom: -24px; left: 50%; transform: translateX(-50%);
     width: 60px; height: 24px; background: #1e1e2a;
@@ -142,19 +142,18 @@ body { background: var(--bg); color: var(--text); font-family: system-ui,sans-se
   .screenshot-cover { object-fit: cover !important; height: 100% !important; margin-top: 0 !important; }
 
   /* ----------------------------------------------------------- */
-  /* 手機雙欄專屬的放大滿版與邊緣對齊邏輯                            */
+  /* 手機雙欄放大：精準靠邊對齊與大小設定                           */
   /* ----------------------------------------------------------- */
-  /* 左邊卡片靠左對齊，右邊卡片靠右對齊 */
-  .card:nth-child(odd) { transform-origin: left center; }
-  .card:nth-child(even) { transform-origin: right center; }
+  .card:nth-child(odd) { transform-origin: left top !important; }
+  .card:nth-child(even) { transform-origin: right top !important; }
   
   .card.preview-active { 
-    transform: scale(1.95); /* 放大接近兩倍達到滿版 */
-    z-index: 150; 
+    transform: scale(1.65); /* 符合紅框的理想放大比例 */
+    z-index: 400; /* 確保疊在所有介面最上方 */
   }
 }
 
-/* ─── 登入畫面與彈跳視窗 (省略其餘細節) ─── */
+/* ─── 登入畫面與輔助介面 ─── */
 #loginBackdrop { position: fixed; inset: 0; z-index: 99999; background: radial-gradient(ellipse at center, #1a1a2e 0%, #0f0f17 100%); display: flex; align-items: center; justify-content: center; }
 .login-box { background: #1e1e2a; border: 1px solid var(--border); border-radius: 20px; padding: 40px 36px; width: 380px; box-shadow: 0 24px 80px rgba(0,0,0,.7); display: flex; flex-direction: column; gap: 20px; }
 .login-title { font-size: 18px; font-weight: 700; text-align: center; color: var(--text); letter-spacing: .04em; }
@@ -167,5 +166,21 @@ body { background: var(--bg); color: var(--text); font-family: system-ui,sans-se
 .login-error { font-size: 13px; color: #ff4757; text-align: center; min-height: 18px; }
 .login-btn { width: 100%; padding: 12px; border-radius: 10px; border: none; background: var(--accent); color: #fff; font-size: 15px; font-weight: 600; cursor: pointer; transition: opacity .15s; }
 .login-btn:hover { opacity: .85; }
+
+/* 收藏夾 Modal (保留原本的樣式) */
+.col-picker { position: fixed; z-index: 9999; width: 220px; background: #1e1e2a; border: 1px solid var(--border); border-radius: var(--radius); box-shadow: 0 12px 40px rgba(0,0,0,.6); overflow: hidden; }
+.col-picker-inner { display: flex; flex-direction: column; }
+.col-picker-head { display: flex; justify-content: space-between; align-items: center; padding: 11px 14px; border-bottom: 1px solid var(--border); font-size: 13px; font-weight: 600; }
+.col-picker-close { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 14px; padding: 2px 6px; border-radius: 4px; }
+.col-rows { max-height: 200px; overflow-y: auto; padding: 6px; }
+.col-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 10px; border-radius: 8px; cursor: pointer; font-size: 13px; color: var(--muted); }
+.col-row:hover { background: rgba(255,255,255,.06); color: var(--text); }
+.col-row.in-col { color: var(--accent); }
+.col-badge { font-size: 14px; font-weight: bold; }
+.col-empty { padding: 12px 10px; font-size: 12px; color: var(--muted); text-align: center; }
+.col-picker-foot { display: flex; gap: 6px; padding: 10px; border-top: 1px solid var(--border); }
+.col-name-input { flex: 1; padding: 6px 10px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg); color: var(--text); font-size: 12px; outline: none; }
+.col-add-btn { padding: 6px 10px; border-radius: 6px; border: none; background: var(--accent); color: #fff; font-size: 12px; cursor: pointer; }
+
 .vb-toast { position: fixed; bottom: 32px; left: 50%; transform: translateX(-50%) translateY(20px); background: #2a2a3a; border: 1px solid var(--border); color: var(--text); font-size: 13px; padding: 10px 20px; border-radius: 20px; box-shadow: 0 8px 24px rgba(0,0,0,.5); opacity: 0; transition: opacity .25s, transform .25s; z-index: 99998; white-space: nowrap; }
 .vb-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
