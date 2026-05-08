@@ -33,6 +33,11 @@ function loadSession() {
   return null;
 }
 
+function clearSession() {
+  localStorage.removeItem(AUTH.CREATOR.key);
+  localStorage.removeItem(AUTH.WORM.key);
+}
+
 function keepSessionAlive() {
   setInterval(() => { const r = loadSession(); if (r) saveSession(r); }, 60 * 1000);
 }
@@ -77,9 +82,11 @@ const state = {
   previewSpeed: Number(localStorage.getItem('previewSpeed') || 22),
   recent: JSON.parse(localStorage.getItem('recentViews') || '[]'),
   favorites: JSON.parse(localStorage.getItem('favorites') || '[]'),
+  collections: JSON.parse(localStorage.getItem('collections') || '[]'),
 };
 
 function isCreator() { return state.role === 'CREATOR'; }
+function saveCollections() { localStorage.setItem('collections', JSON.stringify(state.collections)); }
 
 function cleanTitle(raw) {
   if (!raw) return raw;
@@ -108,29 +115,36 @@ window.toggleFav = (e, id) => {
 
 window.openColPicker = (e, id) => { e.preventDefault(); e.stopPropagation(); showToast('收藏夾功能建置中'); };
 
-// ─── [核心功能] 專屬 App 喚醒與跳轉邏輯 ──────────────────────────
+// ─── [核心功能] 專屬 App 喚醒與跳轉邏輯 (強化版) ─────────────────
 window.handleJump = (e, url) => {
   e.preventDefault();
   e.stopPropagation();
 
-  // 識別是否為禁漫天堂的連結 (相簿 ID 提取)
-  const jmRegex = /album\/(\d+)/;
+  // 放寬正則表達式，同時支援 /album/123 與 /photo/123 格式
+  const jmRegex = /(?:album|photo)\/(\d+)/;
   const match = url.match(jmRegex);
   
-  if (match && (url.includes('18comic') || url.includes('jmcomic'))) {
+  if (match) {
     const albumId = match[1];
     const appUri = `jmcomic://album/${albumId}`;
     
-    showToast('正在嘗試開啟禁漫 App...');
-    const start = Date.now();
-    window.location.href = appUri; // 嘗試喚醒 App
+    showToast('嘗試喚醒 App...');
     
-    // Fallback: 如果 1.5 秒後仍留在網頁，代表沒裝 App 或喚醒失敗，則改用瀏覽器開啟
+    // 透過動態建立 a 標籤來觸發，提高 PWA 下的成功率
+    const a = document.createElement('a');
+    a.href = appUri;
+    a.style.display = 'none';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    
+    // 延遲 2 秒後檢查。如果 App 成功喚醒，PWA 會退到背景 (document.hidden = true)
+    // 只有在 PWA 依然留在畫面上時，才判定喚醒失敗並改開網頁
     setTimeout(() => {
-      if (Date.now() - start < 2000) {
+      if (!document.hidden) {
         window.open(url, '_blank');
       }
-    }, 1500);
+    }, 2000);
   } else {
     // 一般連結直接開啟
     window.open(url, '_blank');
