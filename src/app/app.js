@@ -155,12 +155,13 @@ async function loadAllItems() {
   return results;
 }
 
-// ─── 卡片渲染 ───────────────────────────────────────────────
+// ─── 卡片渲染 (修復為 div 結構阻斷全域跳轉) ──────────────────────
 function createCard(item) {
   const isFav = state.favorites.includes(item.id) ? 'fav-active' : '';
   const isScreenshot = item.coverImage.includes('/screenshots/');
   const displayTitle = cleanTitle(item.title);
 
+  // 外層改為 div，避免點選預覽時觸發跳轉
   return `
     <div class="card" data-id="${item.id}" style="--preview-duration:${state.previewSpeed}s; --preview-shift:-22%;">
       <button class="btn-fav ${isFav}" onclick="toggleFav(event, '${item.id}')">❤</button>
@@ -204,7 +205,7 @@ function render(items) {
 // ─── 點擊放大與收合邏輯 ─────────────────────────────────────
 function bindClickPreview() {
   document.addEventListener('click', (e) => {
-    // 排除點擊於按鈕、連結或工具列上的情況
+    // 排除點擊於跳轉按鈕、其他按鈕或工具列的情況
     if (e.target.closest('button') || e.target.closest('.btn-goto') || e.target.closest('.drawer-handle') || e.target.closest('.toolbar')) {
       return;
     }
@@ -214,15 +215,15 @@ function bindClickPreview() {
 
     if (card) {
       const isActive = card.classList.contains('preview-active');
-      // 點擊任何卡片時，先收起畫面上其他已展開的卡片
+      // 點擊卡片時，先收合所有已展開的卡片
       activeCards.forEach(c => c.classList.remove('preview-active'));
       
-      // 如果剛剛點擊的這張卡片原本沒有展開，就將它展開
+      // 若原先未展開，則觸發展開
       if (!isActive) {
         card.classList.add('preview-active');
       }
     } else {
-      // 點擊到卡片以外的空白處，收起所有卡片
+      // 點擊空白處時收合所有卡片
       activeCards.forEach(c => c.classList.remove('preview-active'));
     }
   });
@@ -341,7 +342,7 @@ async function main() {
   initSidebar(state.items);
   render(state.items);
   
-  bindClickPreview(); // 取代舊有的 bindTouchPreview()
+  bindClickPreview();
   initDrawer();
   wireSearch(state.items);
   wireSpeedSlider();
